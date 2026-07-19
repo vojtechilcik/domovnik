@@ -478,30 +478,40 @@ def update_settings(data: dict, user: dict = Depends(get_current_user)):
         row = db.execute("SELECT * FROM landlord_settings WHERE landlord_id=?", (user["id"],)).fetchone()
         return dict(row)
 
+# ─── Health check ─────────────────────────────────────
+@app.get("/health")
+def health():
+    return {"status": "ok", "version": "0.0.1"}
+
 # ─── Static file serving (MUST BE LAST — catches only non-API paths) ──
-STATIC_DIRS = [
-    os.path.join(os.path.dirname(__file__), "..", "..", "apps", "desktop"),
-    os.path.join(os.path.dirname(__file__), "static"),
-]
+# Auto-detect static dir
+def _find_static_dir():
+    dirs = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "apps", "desktop"),  # local dev
+        os.path.join(os.path.dirname(__file__), "static"),  # Docker /app/static
+    ]
+    for d in dirs:
+        if os.path.isdir(d) and os.path.isfile(os.path.join(d, "login.html")):
+            return d
+    return dirs[-1]  # fallback
+
+STATIC_DIR = _find_static_dir()
 
 @app.get("/{filename:path}")
 async def serve_static(filename: str):
-    # Don't intercept API/unknown paths
-    if filename.startswith("api/") or filename.startswith("auth/"):
+    if filename.startswith("api/") or filename.startswith("auth/") or filename == "health":
         raise HTTPException(404, "Not found")
-    for static_dir in STATIC_DIRS:
-        filepath = os.path.join(static_dir, filename)
-        if os.path.isfile(filepath):
-            mt = mimetypes.guess_type(filepath)[0] or "text/html"
-            return FileResponse(filepath, media_type=mt)
+    filepath = os.path.join(STATIC_DIR, filename)
+    if os.path.isfile(filepath):
+        mt = mimetypes.guess_type(filepath)[0] or "text/html"
+        return FileResponse(filepath, media_type=mt)
     return HTMLResponse("<h1>Domovník — 404 Not Found</h1>", status_code=404)
 
 @app.get("/")
 async def serve_root():
-    for static_dir in STATIC_DIRS:
-        filepath = os.path.join(static_dir, "login.html")
-        if os.path.isfile(filepath):
-            return FileResponse(filepath, media_type="text/html")
+    filepath = os.path.join(STATIC_DIR, "login.html")
+    if os.path.isfile(filepath):
+        return FileResponse(filepath, media_type="text/html")
     return HTMLResponse("<h1>Domovník — 404 Not Found</h1>", status_code=404)
 
 # ─── Run ──────────────────────────────────────────────

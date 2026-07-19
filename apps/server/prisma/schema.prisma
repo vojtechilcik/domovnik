@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  LANDLORD
+  TENANT
+}
+
+enum UnitType {
+  Byt
+  Dum
+  Nebytovy_prostor
+  Garaz
+  Pozemek
+  Jine
+}
+
+enum PaymentMethod {
+  Prevod
+  Rucne
+  Bankovni_vypis
+}
+
+enum MatchStatus {
+  match
+  amount_mismatch
+  duplicate
+  nomatch
+}
+
+enum InspectionType {
+  Revize_plynu
+  Revize_elektroinstalace
+  Kontrola_komina
+  Servis_kotle
+  Revize_hasiciho_pristroje
+  Odecet_meridel
+  Jine
+}
+
+enum RepairCategory {
+  Voda_a_odpad
+  Topeni
+  Elektro
+  Spotrebice
+  Okna_a_dvere
+  Zamky_a_klice
+  Plisen_vlhkost
+  Spolecne_prostory
+  Jine
+}
+
+enum RepairStatus {
+  Zpracovava_se
+  Nova
+  V_reseni
+  Zadano_remeslnikovi
+  Vyreseno
+}
+
+enum MessageFrom {
+  najemnik
+  spravce
+  asistent
+}
+
+enum AutonomyMode {
+  auto
+  assist
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole
+  name         String
+  phone        String?
+  locale       String   @default("cs-CZ")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenancy      Tenancy?        @relation("TenantUser")
+  landlordUnits    Unit[]         @relation("Landlord")
+  landlordTenancies Tenancy[]      @relation("LandlordTenancies")
+  landlordPayments  Payment[]      @relation("LandlordPayments")
+  landlordBankTxns  BankTransaction[] @relation("LandlordBankTransactions")
+  landlordInspections Inspection[]   @relation("LandlordInspections")
+  landlordSettlements Settlement[]   @relation("LandlordSettlements")
+  landlordRepairReqs  RepairRequest[]  @relation("LandlordRepairRequests")
+  landlordSettings   LandlordSettings? @relation("LandlordSettingsRel")
+
+  @@map("users")
+}
+
+model Unit {
+  id         String   @id @default(uuid())
+  landlordId String   @map("landlord_id")
+  name       String
+  address    String
+  areaM2     Float    @map("area_m2")
+  type       UnitType
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  landlord   User      @relation("Landlord", fields: [landlordId], references: [id])
+  tenancies  Tenancy[]
+  inspections Inspection[]
+  settlements Settlement[]
+  repairRequests RepairRequest[] @relation("UnitRepairRequests")
+
+  @@map("units")
+}
+
+model Tenancy {
+  id              String    @id @default(uuid())
+  landlordId      String    @map("landlord_id")
+  unitId          String    @map("unit_id")
+  tenantUserId    String?   @map("tenant_user_id") @unique
+  tenantName      String    @map("tenant_name")
+  phone           String?
+  email           String?
+  rent            Int       // CZK/month, whole koruna
+  serviceAdvances Int       @map("service_advances")
+  deposit         Int?
+  variableSymbol  String    @map("variable_symbol")
+  leaseStart      DateTime  @map("lease_start")
+  leaseEnd        DateTime? @map("lease_end")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  landlord      User           @relation("LandlordTenancies", fields: [landlordId], references: [id])
+  unit          Unit           @relation(fields: [unitId], references: [id])
+  tenantUser    User?          @relation("TenantUser", fields: [tenantUserId], references: [id])
+  payments      Payment[]
+  repairRequests RepairRequest[] @relation("TenancyRepairRequests")
+
+  @@map("tenancies")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  landlordId     String        @map("landlord_id")
+  tenancyId      String        @map("tenancy_id")
+  period         String        // YYYY-MM
+  amount         Int           // whole CZK
+  paidDate       DateTime?     @map("paid_date")
+  method         PaymentMethod
+  sourceMeta     Json?         @map("source_meta") // { counterpartyName?, vs?, bankTransactionId? }
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  landlord        User             @relation("LandlordPayments", fields: [landlordId], references: [id])
+  tenancy         Tenancy          @relation(fields: [tenancyId], references: [id])
+  bankTransaction BankTransaction? @relation("LinkedPayment")
+
+  @@map("payments")
+}
+
+model BankTransaction {
+  id              String      @id @default(uuid())
+  landlordId      String      @map("landlord_id")
+  date            DateTime
+  amount          Float       // can have halere
+  vs              String?
+  counterparty    String
+  message         String?
+  matchStatus     MatchStatus @map("match_status")
+  linkedPaymentId String?     @map("linked_payment_id") @unique
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  landlord      User     @relation("LandlordBankTransactions", fields: [landlordId], references: [id])
+  linkedPayment Payment? @relation("LinkedPayment", fields: [linkedPaymentId], references: [id])
+
+  @@map("bank_transactions")
+}
+
+model Inspection {
+  id         String        @id @default(uuid())
+  landlordId String        @map("landlord_id")
+  unitId     String        @map("unit_id")
+  type       InspectionType
+  dueDate    DateTime      @map("due_date")
+  done       Boolean       @default(false)
+  note       String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  landlord User @relation("LandlordInspections", fields: [landlordId], references: [id])
+  unit     Unit @relation(fields: [unitId], references: [id])
+
+  @@map("inspections")
+}
+
+model Settlement {
+  id             String   @id @default(uuid())
+  landlordId     String   @map("landlord_id")
+  unitId         String   @map("unit_id")
+  year           Int
+  tenantName     String   @map("tenant_name")
+  advancesTotal  Int      @map("advances_total")
+  costs          Json     // [{ label: string, amount: number }]
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  landlord User @relation("LandlordSettlements", fields: [landlordId], references: [id])
+  unit     Unit @relation(fields: [unitId], references: [id])
+
+  @@map("settlements")
+}
+
+model RepairRequest {
+  id           String        @id @default(uuid())
+  landlordId   String        @map("landlord_id")
+  unitId       String        @map("unit_id")
+  tenancyId    String        @map("tenancy_id")
+  category     RepairCategory
+  description  String
+  photoUrls    String[]      @map("photo_urls")
+  status       RepairStatus  @default(Nova)
+  triage       Json?         // TriageResult JSON or null
+  triageError  String?       @map("triage_error")
+  aiSolution   String?       @map("ai_solution")
+  enquiryDraft String?       @map("enquiry_draft")
+  tenantDraft  String?       @map("tenant_draft")
+  agentLog     Json[]        @default([]) @map("agent_log") // AgentLogEntry[]
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  landlord User     @relation("LandlordRepairRequests", fields: [landlordId], references: [id])
+  unit     Unit     @relation("UnitRepairRequests", fields: [unitId], references: [id])
+  tenancy  Tenancy  @relation("TenancyRepairRequests", fields: [tenancyId], references: [id])
+  messages Message[]
+
+  @@map("repair_requests")
+}
+
+model Message {
+  id               String      @id @default(uuid())
+  repairRequestId  String      @map("repair_request_id")
+  from             MessageFrom
+  text             String
+  at               DateTime    @default(now())
+
+  repairRequest RepairRequest @relation(fields: [repairRequestId], references: [id])
+
+  @@map("messages")
+}
+
+model LandlordSettings {
+  id                 String       @id @default(uuid())
+  landlordId         String       @unique @map("landlord_id")
+  autonomy           AutonomyMode @default(auto)
+  notifyOnNewRequest Boolean      @default(true) @map("notify_on_new_request")
+  notifyOnEmergency  Boolean      @default(true) @map("notify_on_emergency")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  landlord User @relation("LandlordSettingsRel", fields: [landlordId], references: [id])
+
+  @@map("landlord_settings")
+}
+
+model InviteToken {
+  id        String   @id @default(uuid())
+  email     String
+  tenancyId String   @map("tenancy_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("invite_tokens")
+}

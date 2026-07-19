@@ -1,0 +1,12 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY apps/server/agent_api.py .
+COPY apps/server/.env* .
+
+RUN pip install --no-cache-dir fastapi uvicorn httpx pydantic python-dotenv
+
+EXPOSE 3001
+
+CMD ["python3", "agent_api.py"]

@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: domovnik
+      POSTGRES_PASSWORD: domovnik
+      POSTGRES_DB: domovnik
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://domovnik:domovnik@postgres:5432/domovnik
+      JWT_SECRET: change-me-in-production
+      JWT_REFRESH_SECRET: change-me-refresh
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

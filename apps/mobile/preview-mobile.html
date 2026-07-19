@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Domovník — Nájemník</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+    :root {
+      --ink: #1b1a17; --muted: #6f6e66; --paper: #eceae3; --surface: #faf9f5; --surface2: #f3f1ea;
+      --line: #dbd8cf; --pine: #2f4a3e; --pine-soft: #e2eae3; --brick: #a13520; --brick-soft: #f2e2dc;
+      --ochre: #8a6420; --ochre-soft: #efe6d2; --white: #ffffff;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'IBM Plex Sans',system-ui,sans-serif; background:var(--paper); color:var(--ink); max-width:430px; margin:0 auto; min-height:100vh; }
+    /* Top bar */
+    .topbar { background:var(--surface); border-bottom:1px solid var(--line); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+    .topbar-title { font-size:17px; font-weight:700; color:var(--pine); }
+    .topbar-avatar { width:32px; height:32px; border-radius:50%; background:var(--pine-soft); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:var(--pine); }
+    /* Tab content */
+    .tab-content { padding:20px; padding-bottom:100px; display:none; }
+    .tab-content.active { display:block; }
+    /* Cards */
+    .card { background:var(--surface); border-radius:14px; border:1px solid var(--line); padding:20px; margin-bottom:16px; }
+    .card-accent { border-left:4px solid var(--pine); }
+    .card-danger { border-left:4px solid var(--brick); }
+    .greeting { font-size:20px; font-weight:700; margin-bottom:20px; }
+    .unit-name { font-size:18px; font-weight:700; }
+    .unit-address { font-size:14px; color:var(--muted); margin-bottom:14px; }
+    .fact-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .fact-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); }
+    .fact-value { font-size:16px; font-weight:600; color:var(--ink); margin-top:2px; }
+    .fact-value-mono { font-size:18px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+    .btn { display:block; width:100%; padding:16px; border-radius:12px; text-align:center; font-weight:700; font-size:16px; cursor:pointer; border:none; transition:0.15s; }
+    .btn-primary { background:var(--pine); color:var(--white); }
+    .btn-primary:hover { opacity:0.85; }
+    .btn-ghost { background:transparent; color:var(--pine); border:1px solid var(--pine); margin-top:8px; }
+    /* Section titles */
+    .section-title { font-size:15px; font-weight:600; margin:24px 0 12px; }
+    /* Payment row */
+    .pay-row { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--surface); border-radius:10px; border:1px solid var(--line); margin-bottom:6px; }
+    .pay-period { font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; }
+    .pay-amount { font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:700; }
+    .pay-status { font-size:11px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+    .pay-status.paid { color:var(--pine); }
+    .pay-status.unpaid { color:var(--ochre); }
+    .note { margin-top:20px; font-size:12px; color:var(--muted); text-align:center; padding:12px; background:var(--surface2); border-radius:10px; }
+    /* Request cards */
+    .req-card { background:var(--surface); border-radius:12px; border:1px solid var(--line); padding:16px; margin-bottom:8px; cursor:pointer; transition:0.15s; }
+    .req-card:hover { border-color:var(--pine); }
+    .req-desc { font-size:14px; font-weight:600; }
+    .req-meta { font-size:11px; color:var(--muted); margin-top:4px; display:flex; gap:8px; }
+    /* Pills */
+    .pill { display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; padding:3px 10px; border-radius:999px; }
+    .pill-green { background:var(--pine-soft); color:var(--pine); }
+    .pill-brick { background:var(--brick-soft); color:var(--brick); }
+    .pill-ochre { background:var(--ochre-soft); color:var(--ochre); }
+    .pill-muted { background:var(--surface2); color:var(--muted); }
+    /* Bottom tabs */
+    .bottom-tabs { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; background:var(--surface); border-top:1px solid var(--line); display:flex; padding-bottom:env(safe-area-inset-bottom,8px); z-index:20; }
+    .tab-btn { flex:1; padding:12px; text-align:center; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border:none; background:transparent; transition:0.15s; }
+    .tab-btn.active { color:var(--pine); font-weight:700; border-top:2px solid var(--pine); margin-top:-1px; }
+    /* Detail view */
+    .detail-view { display:none; padding:20px; }
+    .detail-view.active { display:block; }
+    .detail-back { display:inline-flex; align-items:center; gap:4px; font-size:13px; color:var(--pine); cursor:pointer; margin-bottom:16px; font-weight:600; }
+    .message-bubble { max-width:85%; padding:12px 16px; border-radius:14px; margin-bottom:10px; font-size:14px; line-height:1.5; }
+    .message-tenant { background:var(--surface2); align-self:flex-start; margin-right:auto; }
+    .message-landlord { background:var(--pine-soft); align-self:flex-end; margin-left:auto; }
+    .message-meta { font-size:10px; color:var(--muted); margin-top:4px; font-family:'IBM Plex Mono',monospace; }
+    .chat-container { display:flex; flex-direction:column; margin-bottom:16px; }
+    .composer { display:flex; gap:8px; }
+    .composer input { flex:1; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:var(--surface); }
+    .composer button { padding:12px 20px; background:var(--pine); color:var(--white); border:none; border-radius:10px; font-weight:600; cursor:pointer; }
+    /* Safety banner */
+    .safety-banner { background:var(--brick-soft); border:1px solid var(--brick); border-radius:12px; padding:14px 16px; margin-bottom:16px; font-size:13px; }
+    .safety-banner strong { color:var(--brick); }
+    /* Report form */
+    .report-form { display:none; }
+    .report-form.active { display:block; }
+    .report-form textarea { width:100%; min-height:100px; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:14px; font-family:inherit; background:var(--surface); resize:vertical; }
+    .report-form select { width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:var(--surface); margin-bottom:12px; }
+    .photo-placeholder { width:100%; padding:40px; border:2px dashed var(--line); border-radius:10px; text-align:center; color:var(--muted); font-size:13px; margin-bottom:12px; cursor:pointer; }
+    .agent-info { background:var(--pine-soft); border-radius:10px; padding:12px; font-size:12px; color:var(--pine); margin-top:12px; }
+    .empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-title">Domovník</div>
+    <div class="topbar-avatar">PN</div>
+  </div>
+
+  <!-- DOMŮ TAB -->
+  <div id="tabDomu" class="tab-content active">
+    <div class="greeting">Dobrý den, Petro</div>
+    <div class="card card-accent">
+      <div class="unit-name">Byt 2+kk, Praha</div>
+      <div class="unit-address">Sokolovská 45, Praha 8</div>
+      <div class="fact-row">
+        <div><div class="fact-label">Nájemné + služby</div><div class="fact-value">21 700 Kč/měs</div></div>
+        <div><div class="fact-label">Variabilní symbol</div><div class="fact-value-mono">1201</div></div>
+      </div>
+      <div class="fact-row" style="margin-top:8px">
+        <div><div class="fact-label">Kauce</div><div class="fact-value">40 000 Kč</div></div>
+        <div><div class="fact-label">Smlouva do</div><div class="fact-value">doba neurčitá</div></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="showReportForm()">Nahlásit závadu</button>
+    <div class="section-title">Poslední požadavky</div>
+    <div class="req-card" onclick="showDetail('rr1')">
+      <div class="req-desc">Praskla přívodní hadička k pračce</div>
+      <div class="req-meta">
+        <span>Voda a odpad</span>
+        <span class="pill pill-brick">havárie</span>
+        <span class="pill pill-green">V řešení</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLATBY TAB -->
+  <div id="tabPlatby" class="tab-content">
+    <div class="section-title" style="margin-top:0">Platby — posledních 6 měsíců</div>
+    <div class="pay-row"><span class="pay-period">2026-07</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+    <div class="pay-row"><span class="pay-period">2026-06</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+    <div class="pay-row"><span class="pay-period">2026-05</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+    <div class="note">Platbu proveďte s variabilním symbolem <strong>1201</strong>. Děkujeme!</div>
+  </div>
+
+  <!-- ZÁVADY TAB -->
+  <div id="tabZavady" class="tab-content">
+    <button class="btn btn-primary" onclick="showReportForm()" style="margin-bottom:20px">+ Nahlásit závadu</button>
+    <div class="req-card" onclick="showDetail('rr1')">
+      <div class="req-desc">Praskla přívodní hadička k pračce</div>
+      <div class="req-meta">
+        <span>Voda a odpad</span>
+        <span class="pill pill-brick">havárie</span>
+        <span class="pill pill-green">V řešení</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT FORM (overlay) -->
+  <div id="reportForm" class="tab-content report-form">
+    <div class="detail-back" onclick="hideReportForm()">← Zpět</div>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:16px">Nahlásit závadu</h2>
+    <select>
+      <option>Voda a odpad</option><option>Topení</option><option>Elektro</option>
+      <option>Spotřebiče</option><option>Okna a dveře</option><option>Zámky a klíče</option>
+      <option>Plíseň / vlhkost</option><option>Společné prostory</option><option>Jiné</option>
+    </select>
+    <textarea placeholder="Kde přesně, jak dlouho, jak moc to vadí..."></textarea>
+    <div class="photo-placeholder" onclick="alert('Simulace: fotoaparát / galerie')">📷 Klepnutím přidáte fotografii</div>
+    <button class="btn btn-primary" onclick="submitReport()">Odeslat</button>
+    <div class="agent-info">Po odeslání se AI asistent závady ujme sám — posoudí ji, odpoví vám a připraví řešení.</div>
+  </div>
+
+  <!-- BOTTOM TABS -->
+  <div class="bottom-tabs">
+    <button class="tab-btn active" onclick="switchTab('Domu')">Domů</button>
+    <button class="tab-btn" onclick="switchTab('Platby')">Platby</button>
+    <button class="tab-btn" onclick="switchTab('Zavady')">Závady</button>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="detailView" class="detail-view">
+    <div class="detail-back" onclick="hideDetail()">← Zpět na závady</div>
+    <div class="safety-banner"><strong>⚠ Bezpečnostní upozornění:</strong> Zavřete hlavní přívod vody a odpojte pračku ze zásuvky. Při větším úniku volejte 112.</div>
+    <div class="card" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div><div style="font-size:16px;font-weight:700">Praskla přívodní hadička k pračce</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Voda a odpad · Byt 2+kk, Praha · 15. 7. 2026</div></div>
+        <span class="pill pill-brick">Havárie</span>
+      </div>
+      <div style="margin-top:12px;font-size:14px;color:var(--ink)">Praskla přívodní hadička k pračce, na podlaze v koupelně je voda. Prosím o urychlenou opravu, bojím se poškození podlahy.</div>
+    </div>
+    <div class="section-title">Zprávy se správcem</div>
+    <div class="chat-container" id="chatMessages">
+      <div class="message-bubble message-tenant"><strong>Já</strong><br>Praskla přívodní hadička k pračce, na podlaze je voda.<div class="message-meta">15. 7. 2026 14:23</div></div>
+      <div class="message-bubble message-landlord"><strong>Správce</strong><br>Dobrý den, děkujeme za nahlášení. Závadu jsme přijali a předáváme ji k vyřízení. Prosím zavřete hlavní přívod vody a odpojte pračku ze zásuvky.<div class="message-meta">15. 7. 2026 15:01</div></div>
+      <div class="message-bubble message-landlord" style="background:var(--pine-soft);border:1px solid var(--pine)"><strong>Asistent ✨</strong><br>Posoudil jsem závadu: jedná se o havárii. Doporučuji okamžitě kontaktovat instalatéra. Orientační náklady 2 000–5 000 Kč. Odpovědnost nese pronajímatel dle NV č. 308/2015 Sb.<div class="message-meta">15. 7. 2026 15:02</div></div>
+    </div>
+    <div class="composer">
+      <input type="text" id="msgInput" placeholder="Napište zprávu…" onkeypress="if(event.key==='Enter')sendMessage()">
+      <button onclick="sendMessage()">Odeslat</button>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    function switchTab(tab){
+      document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+      var target = document.getElementById('tab'+tab);
+      if(target) target.classList.add('active');
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      event.target.classList.add('active');
+    }
+
+    // Detail view
+    function showDetail(id){
+      document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+      document.getElementById('detailView').classList.add('active');
+    }
+    function hideDetail(){
+      document.getElementById('detailView').classList.remove('active');
+      document.getElementById('tabZavady').classList.add('active');
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      document.querySelectorAll('.tab-btn')[2].classList.add('active');
+    }
+
+    // Report form
+    function showReportForm(){
+      document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+      document.getElementById('reportForm').classList.add('active');
+    }
+    function hideReportForm(){
+      document.getElementById('reportForm').classList.remove('active');
+      document.getElementById('tabZavady').classList.add('active');
+    }
+    function submitReport(){
+      alert('✅ Závada byla odeslána!\n\nStav: Zpracovává se\n\nAI asistent se závady ujme sám — posoudí ji, odpoví vám a připraví řešení.');
+      hideReportForm();
+    }
+
+    // Chat
+    function sendMessage(){
+      var input = document.getElementById('msgInput');
+      var text = input.value.trim();
+      if(!text) return;
+      var container = document.getElementById('chatMessages');
+      var now = new Date().toLocaleString('cs-CZ');
+      container.innerHTML += '<div class="message-bubble message-tenant"><strong>Já</strong><br>'+text+'<div class="message-meta">'+now+'</div></div>';
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+      // Simulate assistant response after 1.5s
+      setTimeout(function(){
+        container.innerHTML += '<div class="message-bubble message-landlord" style="background:var(--pine-soft);border:1px solid var(--pine)"><strong>Asistent ✨</strong><br>Děkuji za upřesnění. Předal jsem informace správci nemovitosti.<div class="message-meta">'+now+'</div></div>';
+        container.scrollTop = container.scrollHeight;
+      }, 1500);
+    }
+  </script>
+</body>
+</html>

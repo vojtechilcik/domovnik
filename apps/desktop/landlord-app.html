@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Domovník</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+    :root {
+      --ink: #1b1a17; --muted: #6f6e66; --paper: #eceae3; --surface: #faf9f5; --surface2: #f3f1ea;
+      --line: #dbd8cf; --line-dark: #c9c5b8; --pine: #2f4a3e; --pine-soft: #e2eae3;
+      --brick: #a13520; --brick-soft: #f2e2dc; --ochre: #8a6420; --ochre-soft: #efe6d2;
+      --white: #ffffff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'IBM Plex Sans', system-ui, sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: var(--surface); border-right: 1px solid var(--line); padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-logo { font-size: 22px; font-weight: 700; color: var(--pine); margin-bottom: 28px; padding: 0 12px; letter-spacing: -0.01em; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; font-size: 15px; font-weight: 500; color: var(--ink); cursor: pointer; transition: background 0.15s; user-select: none; }
+    .nav-item:hover:not(.active) { background: var(--surface2); }
+    .nav-item.active { background: var(--pine-soft); color: var(--pine); font-weight: 600; }
+    .nav-item .badge { margin-left: auto; background: var(--brick); color: white; font-size: 11px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; padding: 2px 8px; border-radius: 999px; min-width: 22px; text-align: center; }
+    .main { flex: 1; padding: 40px 48px; max-width: 1140px; }
+    .phase-badge { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; background: var(--pine); color: white; padding: 4px 12px; border-radius: 6px; margin-bottom: 16px; }
+    h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .subheading { color: var(--muted); font-size: 16px; margin-bottom: 36px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .kpi-tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 24px; border-left: 4px solid var(--pine); }
+    .kpi-tile.warning { border-left-color: var(--ochre); }
+    .kpi-tile.danger  { border-left-color: var(--brick); }
+    .kpi-label { font-size: 13px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+    .kpi-value { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 700; color: var(--ink); }
+    .kpi-value.danger { color: var(--brick); }
+    .section-title { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--ink); }
+    .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); text-align: left; padding: 12px 20px; background: var(--surface2); border-bottom: 1px solid var(--line); }
+    td { font-size: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+    tr:last-child td { border-bottom: none; }
+    .mono { font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+    .pill { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.02em; }
+    .pill-green { background: var(--pine-soft); color: var(--pine); }
+    .pill-brick { background: var(--brick-soft); color: var(--brick); }
+    .pill-ochre { background: var(--ochre-soft); color: var(--ochre); }
+    .pill-muted { background: var(--surface2); color: var(--muted); }
+    .footer-note { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .footer-note strong { color: var(--ink); }
+    .checklist { list-style: none; padding: 0; margin-top: 8px; }
+    .checklist li { padding: 3px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+    .checklist li::before { content: '✓ '; color: var(--pine); font-weight: 700; }
+    .bank-btn { font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition:0.15s; }
+    .bank-btn-primary { background:var(--pine); color:var(--white); }
+    .bank-btn-primary:hover { opacity:0.85; }
+    .bank-btn-ghost { background:transparent; color:var(--pine); border:1px solid var(--pine); margin-left:8px; }
+    /* Role toggle */
+    .role-toggle { position:fixed; top:12px; right:20px; z-index:100; display:flex; gap:0; background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+    .role-btn { padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--muted); transition:0.15s; }
+    .role-btn.active { background:var(--pine); color:var(--white); }
+    /* Tenant mode */
+    .tenant-view { display:none; max-width:430px; margin:0 auto; padding:20px; }
+    .tenant-view.active { display:block; }
+    .landlord-view { display:block; }
+    .landlord-view.hidden { display:none; }
+    .mobile-card { background:var(--surface); border-radius:14px; border:1px solid var(--line); padding:20px; margin-bottom:16px; }
+    .mobile-card-accent { border-left:4px solid var(--pine); }
+    .greeting { font-size:20px; font-weight:700; margin-bottom:20px; }
+    .fact-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .fact-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); }
+    .fact-value { font-size:16px; font-weight:600; color:var(--ink); margin-top:2px; }
+    .fact-value-mono { font-size:18px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+    .btn { display:block; width:100%; padding:14px; border-radius:12px; text-align:center; font-weight:700; font-size:15px; cursor:pointer; border:none; }
+    .btn-primary { background:var(--pine); color:var(--white); }
+    .btn-primary:hover { opacity:0.85; }
+    .req-card { background:var(--surface); border-radius:12px; border:1px solid var(--line); padding:16px; margin-bottom:8px; cursor:pointer; transition:0.15s; }
+    .req-card:hover { border-color:var(--pine); }
+    .req-desc { font-size:14px; font-weight:600; }
+    .req-meta { font-size:11px; color:var(--muted); margin-top:4px; display:flex; gap:8px; align-items:center; }
+    /* Mobile tabs */
+    .bottom-tabs { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; background:var(--surface); border-top:1px solid var(--line); display:flex; z-index:20; }
+    .tab-btn { flex:1; padding:12px; text-align:center; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border:none; background:transparent; }
+    .tab-btn.active { color:var(--pine); font-weight:700; border-top:2px solid var(--pine); margin-top:-1px; }
+    .mobile-content { padding-bottom:80px; }
+    .mobile-tab { display:none; }
+    .mobile-tab.active { display:block; }
+    /* Detail */
+    .detail-view { display:none; padding:20px; max-width:430px; margin:0 auto; }
+    .detail-view.active { display:block; }
+    .detail-back { display:inline-flex; align-items:center; gap:4px; font-size:13px; color:var(--pine); cursor:pointer; margin-bottom:16px; font-weight:600; }
+    .msg-bubble { max-width:85%; padding:12px 16px; border-radius:14px; margin-bottom:10px; font-size:14px; line-height:1.5; }
+    .msg-tenant { background:var(--surface2); align-self:flex-start; }
+    .msg-landlord { background:var(--pine-soft); align-self:flex-end; }
+    .msg-meta { font-size:10px; color:var(--muted); margin-top:4px; font-family:'IBM Plex Mono',monospace; }
+    .chat-container { display:flex; flex-direction:column; margin-bottom:16px; }
+    .composer { display:flex; gap:8px; }
+    .composer input { flex:1; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:var(--surface); }
+    .composer button { padding:12px 20px; background:var(--pine); color:var(--white); border:none; border-radius:10px; font-weight:600; cursor:pointer; }
+    .safety-banner { background:var(--brick-soft); border:1px solid var(--brick); border-radius:12px; padding:14px 16px; margin-bottom:16px; font-size:13px; }
+    .safety-banner strong { color:var(--brick); }
+    .report-form { display:none; }
+    .report-form.active { display:block; }
+    .report-form textarea { width:100%; min-height:100px; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:14px; font-family:inherit; background:var(--surface); resize:vertical; }
+    .report-form select { width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:var(--surface); margin-bottom:12px; }
+    .agent-info { background:var(--pine-soft); border-radius:10px; padding:12px; font-size:12px; color:var(--pine); margin-top:12px; }
+    .pay-row { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--surface); border-radius:10px; border:1px solid var(--line); margin-bottom:6px; }
+    .pay-period { font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; }
+    .pay-amount { font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:700; }
+    .pay-status { font-size:11px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+    .pay-status.paid { color:var(--pine); }
+    .note { margin-top:20px; font-size:12px; color:var(--muted); text-align:center; padding:12px; background:var(--surface2); border-radius:10px; }
+  </style>
+</head>
+<body>
+
+<!-- ROLE TOGGLE -->
+<div class="role-toggle">
+  <button class="role-btn active" id="roleLandlord" onclick="switchRole('landlord')">Pronajímatel</button>
+  <button class="role-btn" id="roleTenant" onclick="switchRole('tenant')">Nájemník</button>
+</div>
+
+<!-- LANDLORD VIEW -->
+<div class="layout landlord-view active" id="landlordView">
+  <aside class="sidebar">
+    <div class="sidebar-logo">Domovník</div>
+    <div class="nav-item active" data-page="Prehled">Přehled</div>
+    <div class="nav-item" data-page="Najemnici">Nájemníci</div>
+    <div class="nav-item" data-page="Jednotky">Jednotky</div>
+    <div class="nav-item" data-page="Platby">Platby</div>
+    <div class="nav-item" data-page="Zavady" id="navZavady">Závady<span class="badge" id="zavadyBadge">3</span></div>
+    <div class="nav-item" data-page="Banka">Banka</div>
+    <div class="nav-item" data-page="Vyuctovani">Vyúčtování</div>
+    <div class="nav-item" data-page="Revize">Revize</div>
+    <div style="margin-top:auto;"><div class="nav-item" data-page="Nastaveni">Nastavení</div></div>
+  </aside>
+  <main class="main" id="mainContent"></main>
+</div>
+
+<!-- TENANT VIEW -->
+<div class="tenant-view" id="tenantView">
+  <div class="greeting">Dobrý den, Petro</div>
+  <div id="mobileTabs">
+    <div class="mobile-tab active" id="mobDomu">
+      <div class="mobile-card mobile-card-accent">
+        <div style="font-size:18px;font-weight:700">Byt 2+kk, Praha</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:14px">Sokolovská 45, Praha 8</div>
+        <div class="fact-row">
+          <div><div class="fact-label">Nájemné + služby</div><div class="fact-value">21 700 Kč/měs</div></div>
+          <div><div class="fact-label">Variabilní symbol</div><div class="fact-value-mono">1201</div></div>
+        </div>
+        <div class="fact-row" style="margin-top:8px">
+          <div><div class="fact-label">Kauce</div><div class="fact-value">40 000 Kč</div></div>
+          <div><div class="fact-label">Smlouva do</div><div class="fact-value">doba neurčitá</div></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="showTenantReport(); return false;">Nahlásit závadu</button>
+      <div class="section-title" style="margin-top:20px">Poslední požadavky</div>
+      <div id="tenantReqList"></div>
+    </div>
+    <div class="mobile-tab" id="mobPlatby">
+      <div class="section-title">Platby — posledních 6 měsíců</div>
+      <div class="pay-row"><span class="pay-period">2026-07</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+      <div class="pay-row"><span class="pay-period">2026-06</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+      <div class="pay-row"><span class="pay-period">2026-05</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+      <div class="note">Platbu proveďte s variabilním symbolem <strong>1201</strong></div>
+    </div>
+    <div class="mobile-tab" id="mobZavady">
+      <button class="btn btn-primary" onclick="showTenantReport(); return false;" style="margin-bottom:16px">+ Nahlásit závadu</button>
+      <div id="tenantReqList2"></div>
+    </div>
+    <!-- Report form -->
+    <div class="mobile-tab report-form" id="mobReport">
+      <div class="detail-back" onclick="hideTenantReport()">← Zpět</div>
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:16px">Nahlásit závadu</h2>
+      <select id="reportCategory">
+        <option>Voda a odpad</option><option>Topení</option><option>Elektro</option>
+        <option>Spotřebiče</option><option>Okna a dveře</option><option>Zámky a klíče</option>
+        <option>Plíseň / vlhkost</option><option>Společné prostory</option><option>Jiné</option>
+      </select>
+      <textarea id="reportDesc" placeholder="Kde přesně, jak dlouho, jak moc to vadí..."></textarea>
+      <button class="btn btn-primary" onclick="submitTenantReport()" style="margin-top:12px">Odeslat</button>
+      <div class="agent-info">Po odeslání se AI asistent závady ujme sám — posoudí ji, odpoví vám a připraví řešení.</div>
+    </div>
+    <!-- Detail -->
+    <div class="mobile-tab" id="mobDetail">
+      <div class="detail-back" onclick="hideDetail()">← Zpět na závady</div>
+      <div id="detailContent"></div>
+      <div class="composer" style="margin-top:16px">
+        <input type="text" id="tenantMsgInput" placeholder="Napište zprávu…" onkeypress="if(event.key==='Enter')sendTenantMessage()">
+        <button onclick="sendTenantMessage()">Odeslat</button>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-tabs">
+    <button class="tab-btn active" onclick="switchMobileTab('Domu')">Domů</button>
+    <button class="tab-btn" onclick="switchMobileTab('Platby')">Platby</button>
+    <button class="tab-btn" onclick="switchMobileTab('Zavady')">Závady</button>
+  </div>
+</div>
+
+<script>
+// ============ SHARED DATA ============
+var repairRequests = [
+  { id:'rr1', desc:'Praskla přívodní hadička k pračce', fullDesc:'Praskla přívodní hadička k pračce, na podlaze v koupelně je voda. Prosím o urychlenou opravu, bojím se poškození podlahy.', category:'Voda a odpad', status:'Zadáno řemeslníkovi', urgency:'havárie', unit:'Byt 2+kk, Praha', tenant:'Petra Nováková', date:'15. 7. 2026', messages:[
+    {from:'najemnik', text:'Praskla přívodní hadička k pračce, na podlaze je voda.', at:'15. 7. 2026 14:23'},
+    {from:'spravce', text:'Dobrý den, děkujeme za nahlášení. Závadu jsme přijali a předáváme ji k vyřízení. Prosím zavřete hlavní přívod vody a odpojte pračku ze zásuvky.', at:'15. 7. 2026 15:01'},
+    {from:'asistent', text:'Posoudil jsem závadu: jedná se o havárii. Doporučuji okamžitě kontaktovat instalatéra. Orientační náklady 2 000–5 000 Kč. Odpovědnost nese pronajímatel dle NV č. 308/2015 Sb.', at:'15. 7. 2026 15:02'}
+  ]},
+  { id:'rr2', desc:'Netopí topení v obývacím pokoji', fullDesc:'V obývacím pokoji je zima, topení je studené i na maximální stupeň. V noci klesá teplota pod 18 °C.', category:'Topení', status:'Nová', urgency:'vysoká', unit:'Byt 3+1, Praha', tenant:'Martin Dvořák', date:'16. 7. 2026', messages:[
+    {from:'najemnik', text:'V obývacím pokoji je zima, topení je studené i na maximální stupeň.', at:'16. 7. 2026 09:15'}
+  ]},
+  { id:'rr3', desc:'Uvolněná klika u vchodových dveří', fullDesc:'Klika u vchodových dveří se protáčí, nejdou otevřít. Bojím se, že zůstaneme zamčení.', category:'Zámky a klíče', status:'V řešení', urgency:'nízká', unit:'Byt 2+kk, Brno', tenant:'Tereza Horáková', date:'14. 7. 2026', messages:[
+    {from:'najemnik', text:'Klika u vchodových dveří se protáčí, nejdou otevřít.', at:'14. 7. 2026 18:40'},
+    {from:'spravce', text:'Dobrý den, děkujeme za nahlášení. Podíváme se na to během zítřka.', at:'15. 7. 2026 08:10'}
+  ]}
+];
+var nextId = 4;
+
+// ============ UPDATE BADGE ============
+function updateBadge(){
+  var badge = document.getElementById('zavadyBadge');
+  if(badge) badge.textContent = repairRequests.length;
+}
+
+// ============ TENANT: RENDER REQUEST LIST ============
+function renderTenantRequests(){
+  var html = '';
+  repairRequests.forEach(function(r){
+    if(r.tenant !== 'Petra Nováková') return;
+    var uCls = r.urgency==='havárie'?'pill-brick':r.urgency==='vysoká'?'pill-ochre':'pill-muted';
+    var sCls = r.status==='Zadáno řemeslníkovi'||r.status==='V řešení'?'pill-green':'pill-ochre';
+    html += '<div class="req-card" onclick="showDetail(\''+r.id+'\')"><div class="req-desc">'+r.desc+'</div><div class="req-meta"><span>'+r.category+'</span><span class="pill '+uCls+'">'+r.urgency+'</span><span class="pill '+sCls+'">'+r.status+'</span></div></div>';
+  });
+  var l1 = document.getElementById('tenantReqList');
+  var l2 = document.getElementById('tenantReqList2');
+  if(l1) l1.innerHTML = html || '<div class="empty-state" style="text-align:center;padding:30px;color:var(--muted)">Žádné závady</div>';
+  if(l2) l2.innerHTML = html || '<div class="empty-state" style="text-align:center;padding:30px;color:var(--muted)">Žádné závady</div>';
+}
+
+// ============ TENANT: SUBMIT REPORT ============
+// ============ AGENT PIPELINE SIMULATION (mirrors server-side agent.service.ts) ============
+// ============ LIVE AGENT API CALL ============
+var AGENT_API = 'http://localhost:3001';
+
+function submitTenantReport(){
+  var cat = document.getElementById('reportCategory').value;
+  var desc = document.getElementById('reportDesc').value.trim();
+  if(!desc){ alert('Zadejte popis závady.'); return; }
+  var now = new Date().toLocaleDateString('cs-CZ');
+  var id = 'rr'+nextId++;
+  var newReq = {
+    id:id, desc:desc.substring(0,60)+(desc.length>60?'…':''), fullDesc:desc,
+    category:cat, status:'Zpracovává se', urgency:'střední',
+    unit:'Byt 2+kk, Praha', tenant:'Petra Nováková', date: now,
+    messages:[{from:'najemnik', text:desc, at:now+' '+new Date().toLocaleTimeString('cs-CZ')}],
+    agentLog:[], triage:null, aiSolution:null, enquiryDraft:null, tenantDraft:null, searchResults:[]
+  };
+  repairRequests.unshift(newReq);
+  document.getElementById('reportDesc').value = '';
+  updateBadge();
+  renderTenantRequests();
+  hideTenantReport();
+  switchMobileTabContent('mobZavady');
+
+  // Show progress
+  var statusEl = document.createElement('div');
+  statusEl.id = 'agentStatus';
+  statusEl.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;background:var(--pine);color:white;padding:10px 20px;border-radius:10px;font-weight:600;font-size:14px;font-family:IBM Plex Mono,monospace';
+  statusEl.textContent = '⚙ Agent pracuje… (volání API)';
+  document.body.appendChild(statusEl);
+
+  // Call live agent API
+  var autonomyMode = window._autonomyMode || 'auto';
+  var payload = {
+    repair_request_id: id,
+    description: desc,
+    category: cat,
+    unit_address: newReq.unit,
+    autonomy_mode: autonomyMode
+  };
+
+  fetch(AGENT_API + '/agent/pipeline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(resp){ return resp.json(); })
+  .then(function(result){
+    statusEl.textContent = '✅ Agent dokončil — závada vyhodnocena';
+
+    // Apply results from the live API
+    newReq.triage = result.triage;
+    newReq.searchResults = result.search_results;
+    newReq.aiSolution = result.search_results.length ? result.search_results.join('\n') : null;
+    newReq.enquiryDraft = result.enquiry_draft;
+    newReq.status = result.status;
+    newReq.urgency = result.urgency;
+    newReq.agentLog = result.agent_log;
+    newReq._draft = result.draft;
+
+    if(result.tenant_reply){
+      newReq.messages.push({from:'asistent', text: result.tenant_reply, at: new Date().toISOString()});
+    }
+    if(result.tenant_draft_staged){
+      newReq.tenantDraft = result.tenant_draft_staged;
+    }
+
+    updateBadge();
+    renderTenantRequests();
+
+    // Open detail view
+    setTimeout(function(){ showDetail(id); }, 500);
+    setTimeout(function(){ statusEl.remove(); }, 2000);
+  })
+  .catch(function(err){
+    statusEl.textContent = '⚠ Chyba agenta — API nedostupné (' + err.message + ')';
+    statusEl.style.background = 'var(--brick)';
+    // Fall back to local simulation
+    setTimeout(function(){ runAgentPipelineLocal(newReq); statusEl.remove(); }, 1500);
+  });
+}
+
+// Local fallback (same logic as before, used when API is unavailable)
+function runAgentPipelineLocal(req){
+  var now = new Date().toISOString();
+  var agentLog = [];
+  var autonomyMode = window._autonomyMode || 'auto';
+  var desc = req.fullDesc.toLowerCase();
+  var triage;
+  if(/voda|pračk|hadičk|potopa|vytopen|únik/i.test(desc)){
+    triage={kategorie:'Voda a odpad',nalehavost:'havárie',bezpecnost:{riziko:true,poznamka:'Hrozí poškození podlahy a úraz elektrickým proudem.'},odpovednost:{strana:'pronajímatel',duvod:'Závada na vnitřním rozvodu vody.'},shrnuti:'Prasklá hadička.',doporuceny_remeslnik:'Instalatér',doporucene_kroky:['Zavřít přívod vody','Odpojit spotřebiče','Zavolat instalatéra'],doplnujici_otazky:[],odhad_nakladu:'2 000–6 000 Kč'};
+  } else if(/topen|tepl/i.test(desc)){
+    triage={kategorie:'Topení',nalehavost:'vysoká',bezpecnost:{riziko:false,poznamka:null},odpovednost:{strana:'pronajímatel',duvod:'Technické zařízení budovy.'},shrnuti:'Netopící topení.',doporuceny_remeslnik:'Topnář',doporucene_kroky:['Zkontrolovat ventil','Odsvzdušnit'],doplnujici_otazky:[],odhad_nakladu:'500–3 000 Kč'};
+  } else {
+    triage={kategorie:req.category,nalehavost:'střední',bezpecnost:{riziko:false,poznamka:null},odpovednost:{strana:'nejasné',duvod:'Nutné posouzení.'},shrnuti:'Závada přijata.',doporuceny_remeslnik:'Dle povahy',doporocene_kroky:['Upřesnit popis'],doplnujici_otazky:[],odhad_nakladu:null};
+  }
+  req.triage=triage; req.urgency=triage.nalehavost;
+  agentLog.push({detail:'Třídění: '+triage.nalehavost+', '+triage.odpovednost.strana, at:now});
+  var isEmergency=triage.nalehavost==='havárie'||triage.bezpecnost.riziko;
+  var draft={zprava_najemnikovi:isEmergency?'Havarijní stav! Zavřete přívod. Volejte 112.':'Děkujeme, závadu řešíme.',poptavka_remeslnikovi:'Závada — '+req.desc, doporuceny_stav:isEmergency?'Zadáno řemeslníkovi':'Nová',potreba_doplnit:false};
+  if(autonomyMode==='auto'){ req.messages.push({from:'asistent',text:draft.zprava_najemnikovi,at:now}); req.status=isEmergency?'Zadáno řemeslníkovi':'Nová'; req.enquiryDraft=draft.poptavka_remeslnikovi; }
+  else { req.tenantDraft=draft.zprava_najemnikovi; req.enquiryDraft=draft.poptavka_remeslnikovi; req.status='Nová'; }
+  req.agentLog=agentLog; req._draft=draft;
+  updateBadge(); renderTenantRequests();
+  setTimeout(function(){ showDetail(req.id); },300);
+}
+
+// ============ TENANT: SHOW/HIDE REPORT ============
+function showTenantReport(){ switchMobileTabContent('mobReport'); }
+function hideTenantReport(){ switchMobileTabContent('mobZavady'); }
+
+// ============ TENANT: DETAIL ============
+function showDetail(id){
+  var r = repairRequests.find(function(x){ return x.id===id; });
+  if(!r) return;
+  var uCls = r.urgency==='havárie'?'pill-brick':r.urgency==='vysoká'?'pill-ochre':'pill-muted';
+  var safetyHtml = (r.urgency==='havárie')?'<div class="safety-banner"><strong>⚠ Bezpečnostní upozornění:</strong> Zavřete hlavní přívod vody a odpojte spotřebič ze zásuvky. Při větším úniku volejte 112.</div>':'';
+  var html = safetyHtml;
+  html += '<div class="mobile-card"><div style="display:flex;justify-content:space-between;align-items:start"><div><div style="font-size:16px;font-weight:700">'+r.desc+'</div><div style="font-size:13px;color:var(--muted);margin-top:4px">'+r.category+' · '+r.unit+' · '+r.date+'</div></div><span class="pill '+uCls+'">'+r.urgency+'</span></div><div style="margin-top:12px;font-size:14px;color:var(--ink)">'+r.fullDesc+'</div></div>';
+  html += '<div class="section-title">Zprávy se správcem</div><div class="chat-container">';
+  r.messages.forEach(function(m){
+    var cls = m.from==='najemnik'?'msg-tenant':'msg-landlord';
+    var who = m.from==='najemnik'?'Já':m.from==='asistent'?'Asistent ✨':'Správce';
+    html += '<div class="msg-bubble '+cls+'"><strong>'+who+'</strong><br>'+m.text+'<div class="msg-meta">'+m.at+'</div></div>';
+  });
+  html += '</div>';
+  document.getElementById('detailContent').innerHTML = html;
+  window._currentDetailId = id;
+  switchMobileTabContent('mobDetail');
+}
+function hideDetail(){ switchMobileTabContent('mobZavady'); }
+
+// ============ TENANT: SEND MESSAGE ============
+function sendTenantMessage(){
+  var inp = document.getElementById('tenantMsgInput');
+  var text = inp.value.trim();
+  if(!text || !window._currentDetailId) return;
+  var r = repairRequests.find(function(x){ return x.id===window._currentDetailId; });
+  if(!r) return;
+  var now = new Date().toLocaleDateString('cs-CZ')+' '+new Date().toLocaleTimeString('cs-CZ');
+  r.messages.push({from:'najemnik', text:text, at:now});
+  inp.value = '';
+  showDetail(r.id);
+  // Simulate assistant reply
+  setTimeout(function(){
+    r.messages.push({from:'asistent', text:'Děkuji za upřesnění. Předal jsem informace správci nemovitosti.', at:now});
+    showDetail(r.id);
+  }, 1500);
+}
+
+// ============ MOBILE TAB ============
+function switchMobileTabContent(id){
+  document.querySelectorAll('#mobileTabs .mobile-tab').forEach(function(el){ el.classList.remove('active'); });
+  var target = document.getElementById(id);
+  if(target) target.classList.add('active');
+  // Update bottom tabs
+  var tabMap = {mobDomu:0, mobPlatby:1, mobZavady:2, mobReport:null, mobDetail:null};
+  var idx = tabMap[id];
+  if(idx !== null && idx !== undefined){
+    document.querySelectorAll('.bottom-tabs .tab-btn').forEach(function(b,i){ b.classList.toggle('active',i===idx); });
+  }
+}
+function switchMobileTab(tab){
+  var map = {Domu:'mobDomu', Platby:'mobPlatby', Zavady:'mobZavady'};
+  switchMobileTabContent(map[tab]||'mobDomu');
+  renderTenantRequests();
+}
+
+// ============ ROLE SWITCH ============
+function switchRole(role){
+  document.getElementById('roleLandlord').classList.toggle('active', role==='landlord');
+  document.getElementById('roleTenant').classList.toggle('active', role==='tenant');
+  if(role==='tenant'){
+    document.getElementById('landlordView').classList.add('hidden');
+    document.getElementById('tenantView').classList.add('active');
+    renderTenantRequests();
+  } else {
+    document.getElementById('landlordView').classList.remove('hidden');
+    document.getElementById('tenantView').classList.remove('active');
+    // Re-render landlord Závady to pick up new requests
+    updateBadge();
+    if(window._currentLandlordPage==='Zavady'){ renderPage('Zavady'); }
+  }
+}
+
+// ============ LANDLORD: RENDER PAGES ============
+var pageData = {
+  Prehled: { badge:'Přehled', heading:'Přehled', sub:'Ukázková data — 4 jednotky, 3 nájemníci, červenec 2026' },
+  Najemnici: { badge:'Nájemníci', heading:'Nájemníci', sub:'3 nájemní smlouvy' },
+  Jednotky: { badge:'Jednotky', heading:'Jednotky', sub:'4 jednotky v evidenci' },
+  Platby: { badge:'Platby', heading:'Platby — Červenec 2026', sub:'Měsíční přehled nájemného' },
+  Zavady: { badge:'Závady', heading:'Závady', sub:'Otevřené požadavky — seřazeno podle naléhavosti' },
+  Banka: { badge:'Banka', heading:'Banka — Import výpisu', sub:'Import CSV nebo GPC/ABO formátu' },
+  Vyuctovani: { badge:'Vyúčtování', heading:'Vyúčtování služeb', sub:'Roční vyúčtování — přeplatek/nedoplatek' },
+  Revize: { badge:'Revize', heading:'Revize a kontroly', sub:'4 revize v evidenci' },
+  Nastaveni: { badge:'Nastavení', heading:'Nastavení', sub:'Profil, autonomie agenta, export dat' }
+};
+
+function renderPage(key){
+  window._currentLandlordPage = key;
+  var page = pageData[key];
+  if(!page) return;
+  var content = '';
+
+  if(key==='Prehled'){
+    var openCount = repairRequests.filter(function(r){ return r.status!=='Vyřešeno'; }).length;
+    content = '<div class="kpi-grid">'+
+      '<div class="kpi-tile"><div class="kpi-label">Očekávaný měsíční příjem</div><div class="kpi-value">64 700 Kč</div></div>'+
+      '<div class="kpi-tile"><div class="kpi-label">Obsazenost</div><div class="kpi-value">75 %</div></div>'+
+      '<div class="kpi-tile warning"><div class="kpi-label">Nezaplaceno (VII)</div><div class="kpi-value">15 900 Kč</div></div>'+
+      '<div class="kpi-tile danger"><div class="kpi-label">Otevřené závady</div><div class="kpi-value danger">'+openCount+'</div></div></div>'+
+      '<div class="table-wrap"><table><thead><tr><th>Pozor — nezaplacené nájemné</th><th>Částka</th><th>Stav</th></tr></thead><tbody>'+
+      '<tr><td><strong>Tereza Horáková</strong><span style="color:var(--muted);font-size:13px"> — Byt 2+kk, Brno</span></td><td class="mono">15 900 Kč</td><td><span class="pill pill-ochre">Po splatnosti</span></td></tr>'+
+      '<tr><td><strong>Martin Dvořák</strong><span style="color:var(--muted);font-size:13px"> — Byt 3+1, Praha</span></td><td class="mono">28 100 Kč</td><td><span class="pill pill-muted">Čeká</span></td></tr></tbody></table></div>'+
+      '<div class="section-title">Blížící se revize</div><div class="table-wrap"><table><thead><tr><th>Typ revize</th><th>Jednotka</th><th>Termín</th><th>Stav</th></tr></thead><tbody>'+
+      '<tr><td>Revize plynu</td><td>Byt 2+kk, Brno</td><td class="mono">15. 8. 2026</td><td><span class="pill pill-ochre">Za 27 dní</span></td></tr>'+
+      '<tr><td>Kontrola komína</td><td>Dům, Praha</td><td class="mono">3. 8. 2026</td><td><span class="pill pill-brick">Po termínu!</span></td></tr>'+
+      '<tr><td>Revize elektroinstalace</td><td>Byt 3+1, Praha</td><td class="mono">20. 12. 2026</td><td><span class="pill pill-green">V pořádku</span></td></tr></tbody></table></div>';
+  } else if(key==='Najemnici'){
+    content = '<div class="table-wrap"><table><thead><tr><th>Nájemce</th><th>Jednotka</th><th>Nájemné</th><th>Zálohy na služby</th><th>VS</th><th>Stav</th></tr></thead><tbody>'+
+      '<tr><td><strong>Petra Nováková</strong></td><td>Byt 2+kk, Praha</td><td class="mono">20 000 Kč</td><td class="mono">1 700 Kč</td><td class="mono">1201</td><td><span class="pill pill-green">Aktivní</span></td></tr>'+
+      '<tr><td><strong>Tereza Horáková</strong></td><td>Byt 2+kk, Brno</td><td class="mono">13 900 Kč</td><td class="mono">2 000 Kč</td><td class="mono">3304</td><td><span class="pill pill-ochre">Po splatnosti</span></td></tr>'+
+      '<tr><td><strong>Martin Dvořák</strong></td><td>Byt 3+1, Praha</td><td class="mono">26 100 Kč</td><td class="mono">2 000 Kč</td><td class="mono">8802</td><td><span class="pill pill-green">Aktivní</span></td></tr></tbody></table></div>';
+  } else if(key==='Jednotky'){
+    content = '<div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">'+
+      '<div class="kpi-tile"><div class="kpi-label">Byt 2+kk, Praha</div><div class="kpi-value" style="font-size:18px;font-family:\'IBM Plex Sans\'">Petra Nováková<br><span style="color:var(--muted);font-size:13px;font-weight:400">21 700 Kč/měs · 62 m² · Byt</span></div></div>'+
+      '<div class="kpi-tile warning"><div class="kpi-label">Byt 2+kk, Brno</div><div class="kpi-value" style="font-size:18px;font-family:\'IBM Plex Sans\'">Tereza Horáková<br><span style="color:var(--muted);font-size:13px;font-weight:400">15 900 Kč/měs · 54 m² · Byt</span></div></div>'+
+      '<div class="kpi-tile"><div class="kpi-label">Byt 3+1, Praha</div><div class="kpi-value" style="font-size:18px;font-family:\'IBM Plex Sans\'">Martin Dvořák<br><span style="color:var(--muted);font-size:13px;font-weight:400">28 100 Kč/měs · 78 m² · Byt</span></div></div>'+
+      '<div class="kpi-tile"><div class="kpi-label">Dům, Praha</div><div class="kpi-value" style="font-size:18px;font-family:\'IBM Plex Sans\';color:var(--muted)">Volný<br><span style="color:var(--muted);font-size:13px;font-weight:400">— Kč/měs · 140 m² · Dům</span></div></div></div>';
+  } else if(key==='Platby'){
+    content = '<div class="table-wrap"><table><thead><tr><th>Nájemce</th><th>VS</th><th>Nájemné</th><th>Služby</th><th>Celkem</th><th>Stav</th></tr></thead><tbody>'+
+      '<tr><td><strong>Petra Nováková</strong><br><span style="color:var(--muted);font-size:12px">Byt 2+kk, Praha</span></td><td class="mono">1201</td><td class="mono">20 000 Kč</td><td class="mono">1 700 Kč</td><td class="mono">21 700 Kč</td><td><span class="pill pill-green">Zaplaceno · 5. 7. 2026</span></td></tr>'+
+      '<tr><td><strong>Tereza Horáková</strong><br><span style="color:var(--muted);font-size:12px">Byt 2+kk, Brno</span></td><td class="mono">3304</td><td class="mono">13 900 Kč</td><td class="mono">2 000 Kč</td><td class="mono">15 900 Kč</td><td><span class="pill pill-ochre">Po splatnosti</span></td></tr>'+
+      '<tr><td><strong>Martin Dvořák</strong><br><span style="color:var(--muted);font-size:12px">Byt 3+1, Praha</span></td><td class="mono">8802</td><td class="mono">26 100 Kč</td><td class="mono">2 000 Kč</td><td class="mono">28 100 Kč</td><td><span class="pill pill-muted">Čeká</span></td></tr></tbody></table></div>'+
+      '<div style="display:flex;gap:12px;margin-top:20px"><span style="font-family:\'IBM Plex Mono\';font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase">Celkem červenec</span><span class="mono" style="font-size:20px;font-weight:700">64 700 Kč</span><span style="margin-left:auto;color:var(--ochre);font-weight:600">Nezaplaceno: 44 000 Kč</span></div>';
+  } else if(key==='Zavady'){
+    var urgencyOrder = {havárie:0, vysoká:1, střední:2, nízká:3};
+    var sorted = repairRequests.slice().sort(function(a,b){ return (urgencyOrder[a.urgency]||9)-(urgencyOrder[b.urgency]||9); });
+    content = '<div class="table-wrap"><table><thead><tr><th>Popis</th><th>Jednotka</th><th>Nájemce</th><th>Kategorie</th><th>Naléhavost</th><th>Stav</th></tr></thead><tbody>';
+    sorted.forEach(function(r){
+      var uCls = r.urgency==='havárie'?'pill-brick':r.urgency==='vysoká'?'pill-ochre':r.urgency==='střední'?'pill-ochre':'pill-muted';
+      var sCls = r.status==='Zadáno řemeslníkovi'?'pill-brick':r.status==='V řešení'?'pill-green':r.status==='Zpracovává se'?'pill-ochre':'pill-muted';
+      content += '<tr style="cursor:pointer" onclick="showLandlordZavadaDetail(\''+r.id+'\')"><td><strong>'+r.desc+'</strong><br><span style="color:var(--muted);font-size:12px">'+r.date+'</span></td><td>'+r.unit+'</td><td>'+r.tenant+'</td><td>'+r.category+'</td><td><span class="pill '+uCls+'">'+r.urgency+'</span></td><td><span class="pill '+sCls+'">'+r.status+'</span></td></tr>';
+    });
+    content += '</tbody></table></div>';
+    content += '<div id="landlordZavadaDetail" style="margin-top:24px"></div>';
+    if(sorted.length===0) content += '<div style="text-align:center;padding:40px;color:var(--muted)">Žádné otevřené závady</div>';
+  } else if(key==='Banka'){
+    content = '<textarea id="bankInput" style="width:100%;min-height:120px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;resize:vertical" placeholder="Vložte CSV výpis...">Datum;Objem;VS;Název protiúčtu;Zpráva pro příjemce\n5. 7. 2026;21 700,00;1201;Petra Nováková;najem cervenec\n6. 7. 2026;15 950,00;3304;Tereza Horáková;najemne + sluzby (spatna castka)\n7. 7. 2026;28 100,00;8802;Martin Dvořák;najem 07/2026\n9. 7. 2026;42 350,00;;Zaměstnavatel s.r.o.;mzda 06/2026\n11. 7. 2026;12 000,00;9910;Neznámý odesílatel;vratka</textarea>'+
+      '<button class="bank-btn bank-btn-primary" onclick="simulateBankImport()" style="margin-top:8px">Simulovat import</button><button class="bank-btn bank-btn-ghost" onclick="document.getElementById(\'matchResults\').innerHTML=\'\'" style="color:var(--muted);border-color:var(--muted)">Vyčistit</button>'+
+      '<div id="matchResults" style="margin-top:16px"></div><div id="bookingResult" style="margin-top:16px"></div>'+
+      '<div style="background:var(--ochre-soft);border-radius:12px;padding:16px 20px;font-size:13px;line-height:1.6;margin-top:24px"><strong style="color:var(--ochre)">ℹ Živé napojení není dostupné</strong></div>';
+  } else if(key==='Vyuctovani'){
+    content = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">'+
+      '<div><label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase">Jednotka</label><select id="settUnit" onchange="computeAdvances()" style="width:100%;padding:10px;font-family:\'IBM Plex Mono\';font-size:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)"><option value="t1">Byt 2+kk, Praha — Petra Nováková</option><option value="t2">Byt 2+kk, Brno — Tereza Horáková</option><option value="t3">Byt 3+1, Praha — Martin Dvořák</option></select></div>'+
+      '<div><label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase">Rok</label><input id="settYear" type="number" value="2026" style="width:100%;padding:10px;font-family:\'IBM Plex Mono\';font-size:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)" onchange="computeAdvances()"></div>'+
+      '<div><label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase">Zálohy celkem (Kč)</label><input id="settAdvances" type="number" value="20400" oninput="computeResult()" style="width:100%;padding:10px;font-family:\'IBM Plex Mono\';font-size:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)"></div>'+
+      '<div><button class="bank-btn bank-btn-primary" onclick="computeAdvances()" style="padding:10px 20px;margin-top:22px">Spočítat z evidence</button></div></div>'+
+      '<div id="settlementResultBanner" style="padding:20px;border-radius:14px;font-weight:700;font-size:18px;display:none;margin-bottom:16px"></div>'+
+      '<div class="section-title">Nákladové položky</div><div id="costLines"></div>'+
+      '<button class="bank-btn bank-btn-ghost" onclick="addCostLine()" style="margin-bottom:16px">+ Přidat položku</button>';
+  } else if(key==='Revize'){
+    content = '<div class="table-wrap"><table><thead><tr><th>Typ revize</th><th>Jednotka</th><th>Termín</th><th>Odpočet</th><th>Stav</th></tr></thead><tbody>'+
+      '<tr><td>Kontrola komína</td><td>Dům, Praha</td><td class="mono">3. 8. 2024</td><td><span class="pill pill-brick">−717 dní</span></td><td><span class="pill pill-brick">Po termínu!</span></td></tr>'+
+      '<tr><td>Revize plynu</td><td>Byt 2+kk, Brno</td><td class="mono">15. 8. 2026</td><td><span class="pill pill-ochre">Za 27 dní</span></td><td><span class="pill pill-green">✅ Hotovo</span></td></tr>'+
+      '<tr><td>Revize elektroinstalace</td><td>Byt 3+1, Praha</td><td class="mono">20. 12. 2026</td><td><span class="pill pill-green">Za 154 dní</span></td><td><span class="pill pill-green">V pořádku</span></td></tr>'+
+      '<tr><td>Revize hasicího přístroje</td><td>Dům, Praha</td><td class="mono">10. 1. 2027</td><td><span class="pill pill-green">Za 175 dní</span></td><td><span class="pill pill-green">V pořádku</span></td></tr></tbody></table></div>';
+  } else if(key==='Nastaveni'){
+    content = '<div class="table-wrap"><table><thead><tr><th>Nastavení</th><th>Hodnota</th></tr></thead><tbody>'+
+      '<tr><td><strong>Autonomie agenta</strong><br><span style="color:var(--muted);font-size:12px">Automaticky: Agent sám vyhodnotí závadu, odpoví nájemníkovi a připraví poptávku.</span></td><td><span class="pill pill-green">Automaticky</span></td></tr>'+
+      '<tr><td><strong>Notifikace — nová závada</strong></td><td><span class="pill pill-green">Zapnuto</span></td></tr>'+
+      '<tr><td><strong>Notifikace — havárie</strong></td><td><span class="pill pill-green">Zapnuto (vysoká priorita)</span></td></tr>'+
+      '<tr><td><strong>CSV export plateb</strong></td><td style="font-family:\'IBM Plex Mono\';font-size:13px;color:var(--muted)">UTF-8 BOM, oddělovač ;</td></tr></tbody></table></div>';
+  }
+
+  document.getElementById('mainContent').innerHTML = '<span class="phase-badge">'+page.badge+'</span><h1>'+page.heading+'</h1><p class="subheading">'+page.sub+'</p>'+content+
+    '<div class="footer-note"><strong>Domovník</strong> · Phases 0–5 · <code>pnpm-workspaces</code> monorepo</div>';
+
+  if(key==='Vyuctovani'){
+    setTimeout(function(){ document.getElementById('costLines').innerHTML=''; addCostLine('Teplo a teplá voda',8000); addCostLine('Studená voda a stočné',3500); addCostLine('Úklid',2000); addCostLine('Odvoz odpadu',2000); addCostLine('Správa domu / fond oprav',5000); computeAdvances(); },50);
+  }
+}
+
+// ---- Bank / Settlement helpers ----
+var sAdvances = [1700,2000,2000];
+function computeAdvances(){ var idx=parseInt(document.getElementById('settUnit').value.slice(-1))-1||0; var total=sAdvances[idx]*12; document.getElementById('settAdvances').value=total; computeResult(); }
+function addCostLine(label,amount){ var d=document.getElementById('costLines'); var opts='Teplo a teplá voda,Studená voda a stočné,Elektřina společných prostor,Úklid,Výtah,Odvoz odpadu,Správa domu / fond oprav,Ostatní'.split(',').map(function(l){return'<option value="'+l+'"'+(l===label?' selected':'')+'>'+l+'</option>';}).join(''); var row=document.createElement('div'); row.style='display:grid;grid-template-columns:1fr 120px 40px;gap:8px;margin-bottom:8px'; row.innerHTML='<select onchange="computeResult()">'+opts+'</select><input type="number" value="'+(amount||0)+'" oninput="computeResult()" style="padding:10px;font-family:\'IBM Plex Mono\';font-size:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)"><button onclick="this.parentElement.remove();computeResult()" style="background:transparent;border:none;color:var(--brick);cursor:pointer;font-size:18px">×</button>'; d.appendChild(row); computeResult(); }
+function computeResult(){ var a=parseInt(document.getElementById('settAdvances').value)||0; var rows=document.querySelectorAll('#costLines input'); var c=0; rows.forEach(function(i){c+=parseInt(i.value)||0;}); var r=a-c; var b=document.getElementById('settlementResultBanner'); if(!a&&!c){b.style.display='none';return;} b.style.display='block'; if(r>=0){b.style.background='var(--pine-soft)';b.style.color='var(--pine)';b.style.border='1px solid var(--pine)';b.innerHTML='PŘEPLATEK: <span style="font-family:IBM Plex Mono,monospace;font-size:22px">'+(r).toLocaleString('cs-CZ')+' Kč</span>';} else {b.style.background='var(--brick-soft)';b.style.color='var(--brick)';b.style.border='1px solid var(--brick)';b.innerHTML='NEDOPLATEK: <span style="font-family:IBM Plex Mono,monospace;font-size:22px">'+Math.abs(r).toLocaleString('cs-CZ')+' Kč</span>';} }
+function simulateBankImport(){ var raw=document.getElementById('bankInput').value.trim(); var lines=raw.split(/\n/).filter(function(l){return l.trim();}); if(lines.length<2)return; var ts=[{vs:'1201',total:21700},{vs:'3304',total:15900},{vs:'8802',total:28100},{vs:'1201',total:21700}]; var paid={}; ['1201_2026-07','1201_2026-06','3304_2026-06','8802_2026-06'].forEach(function(k){paid[k]=true;}); var results=[]; for(var i=1;i<lines.length;i++){ var f=lines[i].split(';'); if(f.length<2)continue; var amt=parseFloat(f[1].replace(/\s/g,'').replace(',','.')); var vs=f[2]?f[2].trim():null; var cp=f[3]?f[3].trim():''; var per='2026-07'; var t=ts.find(function(x){return x.vs===vs;}); var cls='nomatch',rs='Nenalezen VS',exp=null; if(vs&&t){ exp=t.total; if(paid[vs+'_'+per]){cls='duplicate';rs='Již spárováno';} else if(amt===exp){cls='match';rs='Sedí';} else {cls='amount_mismatch';rs='Jiná částka';} }else if(!vs){rs='Žádný VS';} results.push({date:f[0],amount:amt,vs:vs,counterparty:cp,classification:cls,reason:rs,expectedAmount:exp}); } var order={match:0,amount_mismatch:1,duplicate:2,nomatch:3}; results.sort(function(a,b){return(order[a.classification]||99)-(order[b.classification]||99);}); var html='<div class="table-wrap"><table><thead><tr><th>✓</th><th>Datum</th><th>Protiúčet</th><th>Částka</th><th>VS</th><th>Stav</th></tr></thead><tbody>'; results.forEach(function(r,i){ var chk=r.classification==='match'?' checked':''; if(r.classification==='duplicate')chk=' disabled'; var pc=r.classification==='match'?'pill-green':r.classification==='amount_mismatch'?'pill-ochre':'pill-muted'; var pl=r.classification==='match'?'Sedí':r.classification==='amount_mismatch'?'Jiná částka':r.classification==='duplicate'?'Již spárováno':'Nespárováno'; html+='<tr><td><input type="checkbox" class="match-checkbox" data-idx="'+i+'"'+chk+'></td><td class="mono">'+r.date+'</td><td>'+r.counterparty+'</td><td class="mono">'+(r.amount).toLocaleString('cs-CZ')+' Kč</td><td class="mono">'+(r.vs||'—')+'</td><td><span class="pill '+pc+'">'+pl+'</span></td></tr>'; }); html+='</tbody></table></div>'; html+='<button class="bank-btn bank-btn-primary" onclick="var c=document.querySelectorAll(\'.match-checkbox:checked:not([disabled])\');var n=[];c.forEach(function(x){var r=results[parseInt(x.dataset.idx)];if(r)n.push(r.counterparty);});document.getElementById(\'bookingResult\').innerHTML=\'<div style=background:var(--pine-soft);border-radius:12px;padding:16px 20px;font-size:14px;margin-top:12px><strong style=color:var(--pine)>✅ Zaúčtováno \'+c.length+\' plateb</strong><br><span style=color:var(--muted);font-size:13px>\'+n.join(\', \')+\'</span></div>\'" style="margin-top:8px">Zaúčtovat vybrané</button>'; document.getElementById('matchResults').innerHTML=html; }
+
+// ============ LANDLORD: ZAVADA DETAIL PANEL ============
+function showLandlordZavadaDetail(id){
+  var r = repairRequests.find(function(x){ return x.id===id; });
+  if(!r) return;
+  var uCls = r.urgency==='havárie'?'pill-brick':r.urgency==='vysoká'?'pill-ochre':'pill-muted';
+  var sCls = r.status==='Zadáno řemeslníkovi'?'pill-brick':r.status==='V řešení'?'pill-green':r.status==='Zpracovává se'?'pill-ochre':'pill-muted';
+
+  // Safety banner
+  var safetyHtml = '';
+  if(r.triage && r.triage.bezpecnost && r.triage.bezpecnost.riziko){
+    safetyHtml = '<div class="safety-banner"><strong>⚠ Bezpečnostní riziko:</strong> '+(r.triage.bezpecnost.poznamka||'')+'</div>';
+  } else if(r.urgency==='havárie'){
+    safetyHtml = '<div class="safety-banner"><strong>⚠ Havarijní stav</strong> — vyžaduje okamžitou pozornost</div>';
+  }
+
+  // Triage / AI assessment card
+  var triageHtml = '';
+  if(r.triage){
+    var respPill = r.triage.odpovednost.strana==='pronajímatel'?'pill-brick':r.triage.odpovednost.strana==='nájemník'?'pill-green':'pill-ochre';
+    triageHtml = '<div style="background:var(--surface);border-radius:14px;border:1px solid var(--line);padding:20px;margin-bottom:16px">'+
+      '<div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;margin-bottom:12px">🤖 AI posouzení závady</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">'+
+        '<div><div class="fact-label">Naléhavost</div><span class="pill '+uCls+'">'+r.triage.nalehavost+'</span></div>'+
+        '<div><div class="fact-label">Odpovědnost</div><span class="pill '+respPill+'">'+r.triage.odpovednost.strana+'</span></div>'+
+        '<div><div class="fact-label">Doporučený řemeslník</div><div style="font-size:14px;font-weight:600">'+r.triage.doporuceny_remeslnik+'</div></div>'+
+      '</div>'+
+      '<div style="margin-bottom:8px"><strong>Shrnutí:</strong> '+r.triage.shrnuti+'</div>'+
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:8px"><strong>Důvod odpovědnosti:</strong> '+r.triage.odpovednost.duvod+'</div>'+
+      (r.triage.odhad_nakladu ? '<div style="margin-bottom:8px"><strong>Odhad nákladů:</strong> <span class="mono">'+r.triage.odhad_nakladu+'</span></div>' : '')+
+      '<div style="font-size:11px;color:var(--muted);margin-top:12px;font-style:italic">Orientační posouzení AI, ne právní ani závazné stanovisko.</div>'+
+    '</div>';
+  }
+
+  // Search results card
+  var searchHtml = '';
+  if(r.searchResults && r.searchResults.length > 0){
+    searchHtml = '<div style="background:var(--surface);border-radius:14px;border:1px solid var(--line);padding:20px;margin-bottom:16px">'+
+      '<div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;margin-bottom:8px">🔍 Nalezení řemeslníci</div>';
+    r.searchResults.forEach(function(sr){
+      searchHtml += '<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.5">'+sr+'</div>';
+    });
+    searchHtml += '</div>';
+  }
+
+  // Enquiry draft
+  var enquiryHtml = '';
+  if(r.enquiryDraft){
+    enquiryHtml = '<div style="background:var(--ochre-soft);border-radius:14px;border:1px solid var(--ochre);padding:16px 20px;margin-bottom:16px">'+
+      '<div style="font-size:12px;color:var(--ochre);text-transform:uppercase;letter-spacing:0.04em;font-weight:700;margin-bottom:8px">📋 Poptávka pro řemeslníka (návrh)</div>'+
+      '<div style="font-size:13px;line-height:1.5">'+r.enquiryDraft+'</div>'+
+      '<div style="margin-top:8px;display:flex;gap:8px"><button class="bank-btn bank-btn-primary" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.textContent);alert(\'Zkopírováno!\')" style="font-size:11px;padding:6px 14px">📋 Kopírovat</button></div>'+
+    '</div>';
+  }
+
+  // Tenant draft (assist mode)
+  var tenantDraftHtml = '';
+  if(r.tenantDraft && !r.messages.some(function(m){ return m.from==='asistent'; })){
+    tenantDraftHtml = '<div style="background:var(--pine-soft);border-radius:14px;border:1px solid var(--pine);padding:16px 20px;margin-bottom:16px">'+
+      '<div style="font-size:12px;color:var(--pine);text-transform:uppercase;letter-spacing:0.04em;font-weight:700;margin-bottom:8px">✉️ Odpověď nájemníkovi — čeká na schválení</div>'+
+      '<div style="font-size:13px;line-height:1.5;margin-bottom:8px">'+r.tenantDraft+'</div>'+
+      '<div style="display:flex;gap:8px"><button class="bank-btn bank-btn-primary" onclick="approveTenantDraft(\''+r.id+'\')" style="font-size:11px;padding:6px 14px">✅ Odeslat</button><button class="bank-btn bank-btn-ghost" onclick="discardTenantDraft(\''+r.id+'\')" style="font-size:11px;padding:6px 14px;color:var(--brick);border-color:var(--brick)">🗑 Zahodit</button></div>'+
+    '</div>';
+  }
+
+  // Message thread
+  var msgHtml = '<div class="section-title" style="margin-top:20px">💬 Konverzace</div><div style="display:flex;flex-direction:column;margin-bottom:16px">';
+  r.messages.forEach(function(m){
+    var cls = m.from==='najemnik'?'msg-tenant':'msg-landlord';
+    var who = m.from==='najemnik'?'Nájemník':m.from==='asistent'?'Asistent ✨':'Správce';
+    msgHtml += '<div class="msg-bubble '+cls+'"><strong>'+who+'</strong><br>'+m.text+'<div class="msg-meta">'+m.at+'</div></div>';
+  });
+  msgHtml += '</div>';
+
+  // Status selector (landlord can change status)
+  var statuses = ['Nová','V řešení','Zadáno řemeslníkovi','Vyřešeno'];
+  var statusOpts = statuses.map(function(s){ return '<option value="'+s+'"'+(r.status===s?' selected':'')+'>'+s+'</option>'; }).join('');
+  var statusHtml = '<div style="display:flex;align-items:center;gap:12px;margin-top:16px;padding:16px;background:var(--surface);border-radius:14px;border:1px solid var(--line)">'+
+    '<span style="font-weight:600;font-size:14px">Stav:</span>'+
+    '<select onchange="changeZavadaStatus(\''+r.id+'\',this.value)" style="padding:8px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:IBM Plex Sans,sans-serif;background:var(--surface)">'+statusOpts+'</select>'+
+    '<span class="pill '+sCls+'" id="statusPill_'+r.id+'">'+r.status+'</span>'+
+    '<button class="bank-btn bank-btn-primary" onclick="alert(\'Agent spuštěn znovu — simulace\\n\\nStatus: Zpracovává se\\nAgent přehodnotí závadu a aktualizuje odpověď.\');renderPage(\'Zavady\')" style="margin-left:auto;font-size:11px;padding:6px 14px">⟳ Spustit agenta znovu</button>'+
+  '</div>';
+
+  document.getElementById('landlordZavadaDetail').innerHTML = safetyHtml + triageHtml + searchHtml + enquiryHtml + tenantDraftHtml + msgHtml + statusHtml;
+}
+
+function approveTenantDraft(id){
+  var r = repairRequests.find(function(x){ return x.id===id; });
+  if(!r || !r.tenantDraft) return;
+  r.messages.push({from:'asistent', text: r.tenantDraft, at: new Date().toISOString()});
+  r.status = 'V řešení';
+  r.tenantDraft = null;
+  updateBadge();
+  renderTenantRequests();
+  renderPage('Zavady');
+}
+
+function discardTenantDraft(id){
+  var r = repairRequests.find(function(x){ return x.id===id; });
+  if(!r) return;
+  r.tenantDraft = null;
+  renderPage('Zavady');
+}
+
+function changeZavadaStatus(id, newStatus){
+  var r = repairRequests.find(function(x){ return x.id===id; });
+  if(!r) return;
+  r.status = newStatus;
+  var pill = document.getElementById('statusPill_'+id);
+  if(pill){
+    pill.textContent = newStatus;
+    pill.className = 'pill '+(newStatus==='Zadáno řemeslníkovi'?'pill-brick':newStatus==='V řešení'?'pill-green':newStatus==='Zpracovává se'?'pill-ochre':'pill-muted');
+  }
+  updateBadge();
+  renderTenantRequests();
+}
+
+// ---- Nav ----
+document.querySelectorAll('.sidebar .nav-item').forEach(function(el){
+  el.addEventListener('click', function(){
+    var key = this.dataset.page;
+    if(!key) return;
+    document.querySelectorAll('.sidebar .nav-item').forEach(function(e){ e.classList.remove('active'); });
+    this.classList.add('active');
+    renderPage(key);
+  });
+});
+
+// Init
+renderTenantRequests();
+updateBadge();
+renderPage('Prehled');
+</script>
+</body>
+</html>

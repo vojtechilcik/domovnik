@@ -1,0 +1,149 @@
+<!doctype html><html lang="cs">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+<title>Domovník — Nájemník</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+:root{--ink:#1b1a17;--muted:#6f6e66;--paper:#eceae3;--surface:#faf9f5;--surface2:#f3f1ea;--line:#dbd8cf;--pine:#2f4a3e;--pine-soft:#e2eae3;--brick:#a13520;--brick-soft:#f2e2dc;--ochre:#8a6420;--ochre-soft:#efe6d2;--white:#fff}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);max-width:430px;margin:0 auto;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:17px;font-weight:700;color:var(--pine)}
+.topbar-avatar{width:32px;height:32px;border-radius:50%;background:var(--pine-soft);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--pine)}
+.tab-content{padding:20px 20px 100px;display:none}
+.tab-content.active{display:block}
+.card{background:var(--surface);border-radius:14px;border:1px solid var(--line);padding:20px;margin-bottom:16px}
+.card-accent{border-left:4px solid var(--pine)}
+.greeting{font-size:20px;font-weight:700;margin-bottom:20px}
+.unit-name{font-size:18px;font-weight:700}
+.unit-address{font-size:14px;color:var(--muted);margin-bottom:14px}
+.fact-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fact-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.fact-value{font-size:16px;font-weight:600;color:var(--ink);margin-top:2px}
+.fact-value-mono{font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.btn{display:block;width:100%;padding:14px;border-radius:12px;text-align:center;font-weight:700;font-size:15px;cursor:pointer;border:none}
+.btn-primary{background:var(--pine);color:var(--white)}
+.btn-primary:hover{opacity:.85}
+.section-title{font-size:15px;font-weight:600;margin:24px 0 12px}
+.req-card{background:var(--surface);border-radius:12px;border:1px solid var(--line);padding:16px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.req-card:hover{border-color:var(--pine)}
+.req-desc{font-size:14px;font-weight:600}
+.req-meta{font-size:11px;color:var(--muted);margin-top:4px;display:flex;gap:8px;align-items:center}
+.pill{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px}
+.pill-green{background:var(--pine-soft);color:var(--pine)}
+.pill-brick{background:var(--brick-soft);color:var(--brick)}
+.pill-ochre{background:var(--ochre-soft);color:var(--ochre)}
+.pill-muted{background:var(--surface2);color:var(--muted)}
+.bottom-tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--surface);border-top:1px solid var(--line);display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom,8px)}
+.tab-btn{flex:1;padding:12px;text-align:center;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:transparent}
+.tab-btn.active{color:var(--pine);font-weight:700;border-top:2px solid var(--pine);margin-top:-1px}
+.pay-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--surface);border-radius:10px;border:1px solid var(--line);margin-bottom:6px}
+.pay-period{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600}
+.pay-amount{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700}
+.pay-status{font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.pay-status.paid{color:var(--pine)}
+.note{margin-top:20px;font-size:12px;color:var(--muted);text-align:center;padding:12px;background:var(--surface2);border-radius:10px}
+.safety-banner{background:var(--brick-soft);border:1px solid var(--brick);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:13px}
+.safety-banner strong{color:var(--brick)}
+.msg-bubble{max-width:85%;padding:12px 16px;border-radius:14px;margin-bottom:10px;font-size:14px;line-height:1.5}
+.msg-tenant{background:var(--surface2);align-self:flex-start;margin-right:auto}
+.msg-landlord{background:var(--pine-soft);align-self:flex-end;margin-left:auto}
+.msg-meta{font-size:10px;color:var(--muted);margin-top:4px;font-family:'IBM Plex Mono',monospace}
+.chat-wrap{display:flex;flex-direction:column;margin-bottom:16px}
+.composer{display:flex;gap:8px;margin-bottom:20px}
+.composer input{flex:1;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:var(--surface)}
+.composer button{padding:12px 20px;background:var(--pine);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer}
+.detail-back{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--pine);cursor:pointer;margin-bottom:16px;font-weight:600}
+.report-form select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:var(--surface);margin-bottom:12px}
+.report-form textarea{width:100%;min-height:100px;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:var(--surface);resize:vertical}
+.agent-info{background:var(--pine-soft);border-radius:10px;padding:12px;font-size:12px;color:var(--pine);margin-top:12px}
+.connection-bar{background:var(--surface2);padding:6px 16px;text-align:center;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);border-bottom:1px solid var(--line)}
+.connection-bar.online{color:var(--pine)}
+.connection-bar.offline{color:var(--brick)}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-title">Domovník</div><div class="topbar-avatar">PN</div></div>
+<div class="connection-bar online" id="connBar">🟢 Připojeno k agentovi (localhost:3001)</div>
+
+<div id="tabDomu" class="tab-content active">
+<div class="greeting">Dobrý den, Petro</div>
+<div class="card card-accent">
+<div class="unit-name">Byt 2+kk, Praha</div><div class="unit-address">Sokolovská 45, Praha 8</div>
+<div class="fact-row"><div><div class="fact-label">Nájemné + služby</div><div class="fact-value">21 700 Kč/měs</div></div><div><div class="fact-label">Variabilní symbol</div><div class="fact-value-mono">1201</div></div></div>
+<div class="fact-row" style="margin-top:8px"><div><div class="fact-label">Kauce</div><div class="fact-value">40 000 Kč</div></div><div><div class="fact-label">Smlouva do</div><div class="fact-value">doba neurčitá</div></div></div></div>
+<button class="btn btn-primary" onclick="showReport()">Nahlásit závadu</button>
+<div class="section-title">Poslední požadavky</div><div id="reqList1"></div></div>
+
+<div id="tabPlatby" class="tab-content">
+<div class="section-title">Platby — posledních 6 měsíců</div>
+<div class="pay-row"><span class="pay-period">2026-07</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+<div class="pay-row"><span class="pay-period">2026-06</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+<div class="pay-row"><span class="pay-period">2026-05</span><span class="pay-amount">21 700 Kč</span><span class="pay-status paid">Zaplaceno</span></div>
+<div class="note">Platbu proveďte s VS <strong>1201</strong></div></div>
+
+<div id="tabZavady" class="tab-content">
+<button class="btn btn-primary" onclick="showReport()" style="margin-bottom:16px">+ Nahlásit závadu</button>
+<div id="reqList2"></div></div>
+
+<div id="tabReport" class="tab-content report-form">
+<div class="detail-back" onclick="hideReport()">← Zpět</div>
+<h2 style="font-size:20px;font-weight:700;margin-bottom:16px">Nahlásit závadu</h2>
+<select id="rCat"><option>Voda a odpad</option><option>Topení</option><option>Elektro</option><option>Spotřebiče</option><option>Okna a dveře</option><option>Zámky a klíče</option><option>Plíseň / vlhkost</option><option>Společné prostory</option><option>Jiné</option></select>
+<textarea id="rDesc" placeholder="Kde přesně, jak dlouho, jak moc to vadí..."></textarea>
+<button class="btn btn-primary" onclick="submitReport()" style="margin-top:12px">Odeslat</button>
+<div class="agent-info" id="agentNote">Po odeslání se AI asistent závady ujme sám — posoudí ji, odpoví vám a připraví řešení.</div></div>
+
+<div id="tabDetail" class="tab-content">
+<div class="detail-back" onclick="hideDetail()">← Zpět na závady</div><div id="detailContent"></div>
+<div class="composer"><input type="text" id="msgInput" placeholder="Napište zprávu…" onkeypress="if(event.key==='Enter')sendMsg()"><button onclick="sendMsg()">Odeslat</button></div></div>
+
+<div class="bottom-tabs">
+<button class="tab-btn active" onclick="switchTab('Domu')">Domů</button>
+<button class="tab-btn" onclick="switchTab('Platby')">Platby</button>
+<button class="tab-btn" onclick="switchTab('Zavady')">Závady</button></div>
+
+<script>
+var rq=[{id:'rr1',desc:'Prasklá přívodní hadička k pračce',fullDesc:'Praskla přívodní hadička k pračce, na podlaze v koupelně je voda.',category:'Voda a odpad',status:'V řešení',urgency:'havárie',unit:'Byt 2+kk, Praha',date:'15.7.2026',messages:[{from:'najemnik',text:'Praskla přívodní hadička, na podlaze je voda.',at:'15.7.2026 14:23'},{from:'asistent',text:'Dobrý den, závadu jsme vyhodnotili jako havarijní. Prosím zavřete hlavní přívod vody a odpojte pračku ze zásuvky. Kontaktovali jsme odborníka.',at:'15.7.2026 15:02'}]}];
+var nid=5;
+var AGENT='http://localhost:3001';
+
+function renderReqs(){var h='';rq.forEach(function(r){var u=r.urgency==='havárie'?'pill-brick':r.urgency==='vysoká'?'pill-ochre':'pill-muted';var s=r.status==='V řešení'?'pill-green':'pill-ochre';h+='<div class="req-card" onclick="showDetail(\''+r.id+'\')"><div class="req-desc">'+r.desc+'</div><div class="req-meta"><span>'+r.category+'</span><span class="pill '+u+'">'+r.urgency+'</span><span class="pill '+s+'">'+r.status+'</span></div></div>'});var hh=h||'<div style="text-align:center;padding:30px;color:var(--muted)">Žádné závady</div>';var a=document.getElementById('reqList1');var b=document.getElementById('reqList2');if(a)a.innerHTML=hh;if(b)b.innerHTML=hh}
+
+function switchTab(t){document.querySelectorAll('.tab-content').forEach(function(e){e.classList.remove('active')});document.getElementById('tab'+t).classList.add('active');document.querySelectorAll('.tab-btn').forEach(function(e){e.classList.remove('active')});var m={Domu:0,Platby:1,Zavady:2};var i=m[t];if(i!==undefined)document.querySelectorAll('.tab-btn')[i].classList.add('active')}
+function showReport(){document.querySelectorAll('.tab-content').forEach(function(e){e.classList.remove('active')});document.getElementById('tabReport').classList.add('active')}
+function hideReport(){switchTab('Zavady')}
+function showDetail(id){var r=rq.find(function(x){return x.id===id});if(!r)return;var u=r.urgency==='havárie'?'pill-brick':r.urgency==='vysoká'?'pill-ochre':'pill-muted';var s=r.urgency==='havárie'?'<div class="safety-banner"><strong>⚠ Bezpečnostní upozornění:</strong> Zavřete hlavní přívod vody a odpojte spotřebič ze zásuvky.</div>':'';var h=s+'<div class="card"><div style="display:flex;justify-content:space-between"><div><div style="font-size:16px;font-weight:700">'+r.desc+'</div><div style="font-size:13px;color:var(--muted);margin-top:4px">'+r.category+' · '+r.unit+' · '+r.date+'</div></div><span class="pill '+u+'">'+r.urgency+'</span></div><div style="margin-top:12px;font-size:14px">'+r.fullDesc+'</div></div><div class="section-title">Zprávy se správcem</div><div class="chat-wrap">';r.messages.forEach(function(m){var c=m.from==='najemnik'?'msg-tenant':'msg-landlord';var w=m.from==='najemnik'?'Já':m.from==='asistent'?'Asistent ✨':'Správce';h+='<div class="msg-bubble '+c+'"><strong>'+w+'</strong><br>'+m.text+'<div class="msg-meta">'+m.at+'</div></div>'});h+='</div>';document.getElementById('detailContent').innerHTML=h;window._cdid=id;document.querySelectorAll('.tab-content').forEach(function(e){e.classList.remove('active')});document.getElementById('tabDetail').classList.add('active')}
+function hideDetail(){switchTab('Zavady')}
+
+function submitReport(){
+  var cat=document.getElementById('rCat').value, desc=document.getElementById('rDesc').value.trim();
+  if(!desc){alert('Zadejte popis závady.');return}
+  var now=new Date().toLocaleDateString('cs-CZ'), id='rr'+nid++;
+  var nr={id:id,desc:desc.substring(0,60)+(desc.length>60?'…':''),fullDesc:desc,category:cat,status:'Zpracovává se',urgency:'střední',unit:'Byt 2+kk, Praha',date:now,messages:[{from:'najemnik',text:desc,at:now+' '+new Date().toLocaleTimeString('cs-CZ')}],triage:null,searchResults:[]};
+  rq.unshift(nr);document.getElementById('rDesc').value='';renderReqs();hideReport();
+  var el=document.createElement('div');el.style.cssText='position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;background:var(--pine);color:#fff;padding:10px 20px;border-radius:10px;font-weight:600;font-size:14px;font-family:IBM Plex Mono,monospace';el.textContent='⚙ Agent pracuje… (DeepSeek API)';document.body.appendChild(el);
+
+  fetch(AGENT+'/agent/pipeline',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({repair_request_id:id,description:desc,category:cat,unit_address:'Sokolovská 45, Praha 8',autonomy_mode:'auto'})})
+  .then(function(r){return r.json()})
+  .then(function(res){
+    nr.triage=res.triage;nr.searchResults=res.search_results;nr.enquiryDraft=res.enquiry_draft;nr.status=res.status;nr.urgency=res.urgency;
+    if(res.tenant_reply)nr.messages.push({from:'asistent',text:res.tenant_reply,at:new Date().toISOString()});
+    el.textContent='✅ Agent dokončil — stav: '+res.status;renderReqs();
+    setTimeout(function(){showDetail(id);el.remove()},800);
+  })
+  .catch(function(err){
+    el.textContent='⚠ Chyba — API nedostupné';el.style.background='var(--brick)';
+    nr.status='V řešení';nr.urgency='střední';nr.messages.push({from:'asistent',text:'Děkujeme za nahlášení. Závadu posoudíme co nejdříve.',at:new Date().toISOString()});
+    renderReqs();setTimeout(function(){showDetail(id);el.remove()},1500);
+  });
+}
+
+function sendMsg(){var i=document.getElementById('msgInput'),t=i.value.trim();if(!t||!window._cdid)return;var r=rq.find(function(x){return x.id===window._cdid});if(!r)return;var n=new Date().toLocaleDateString('cs-CZ')+' '+new Date().toLocaleTimeString('cs-CZ');r.messages.push({from:'najemnik',text:t,at:n});i.value='';showDetail(r.id);setTimeout(function(){r.messages.push({from:'asistent',text:'Děkuji za upřesnění. Předal jsem informace správci.',at:n});showDetail(r.id)},1500)}
+
+// Connection check
+setInterval(function(){fetch(AGENT+'/health').then(function(r){return r.json()}).then(function(){document.getElementById('connBar').className='connection-bar online';document.getElementById('connBar').textContent='🟢 Připojeno k agentovi'}).catch(function(){document.getElementById('connBar').className='connection-bar offline';document.getElementById('connBar').textContent='🔴 Agent offline — závady nelze odeslat'})},10000);
+
+renderReqs();
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "API_URL": "http://localhost:3000"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "API_URL": "https://staging-api.domovnik.app"
+      },
+      "ios": {
+        "image": "macos-15-xcode-17"
+      },
+      "android": {
+        "image": "ubuntu-22.04-jdk-17"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "API_URL": "https://api.domovnik.app"
+      },
+      "ios": {
+        "image": "macos-15-xcode-17",
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "image": "ubuntu-22.04-jdk-17",
+        "resourceClass": "medium"
+      },
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "${APPLE_ID}",
+        "ascAppId": "${ASC_APP_ID}",
+        "appleTeamId": "${APPLE_TEAM_ID}"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}

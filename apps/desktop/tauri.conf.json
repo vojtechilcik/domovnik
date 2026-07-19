@@ -1,0 +1,58 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/core/tauri-utils/schema.json",
+  "productName": "Domovník",
+  "version": "0.0.1",
+  "identifier": "app.domovnik.desktop",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "title": "Domovník",
+    "windows": [
+      {
+        "title": "Domovník — Správa nemovitostí",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:3000 https://api.domovnik.app; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Business",
+    "shortDescription": "Správa nemovitostí pro český trh",
+    "longDescription": "Domovník je dvoustranná aplikace pro správu nemovitostí sloužící českým pronajímatelům a jejich nájemníkům. Nabízí kompletní správu jednotek, nájemních smluv, plateb, bankovních výpisů, ročního vyúčtování, revizí a závad s autonomním AI asistentem.",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "12.0",
+      "bundleVersion": "1"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Czech"]
+      },
+      "wix": {
+        "language": "cs-CZ"
+      }
+    },
+    "resources": ["resources/*"],
+    "copyright": "© 2026 Domovník"
+  },
+  "plugins": {}
+}

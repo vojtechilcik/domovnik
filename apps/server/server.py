@@ -20,24 +20,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "domovnik-dev-secret-key-2026")
 app = FastAPI(title="Domovník API", version="0.0.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# ─── Static file serving ──────────────────────────────
-# Try multiple paths (local dev vs Docker container)
-STATIC_DIRS = [
-    os.path.join(os.path.dirname(__file__), "..", "..", "apps", "desktop"),  # local dev
-    os.path.join(os.path.dirname(__file__), "static"),  # Docker /app/static
-]
 
-@app.get("/")
-@app.get("/{filename:path}")
-async def serve_static(filename: str = "login.html", request: Request = None):
-    if not filename or filename == "/":
-        filename = "login.html"
-    for static_dir in STATIC_DIRS:
-        filepath = os.path.join(static_dir, filename)
-        if os.path.isfile(filepath):
-            mt = mimetypes.guess_type(filepath)[0] or "text/html"
-            return FileResponse(filepath, media_type=mt)
-    return HTMLResponse("<h1>Domovník — 404 Not Found</h1>", status_code=404)
 
 # ─── Database ─────────────────────────────────────────
 def init_db():
@@ -494,6 +477,32 @@ def update_settings(data: dict, user: dict = Depends(get_current_user)):
         db.commit()
         row = db.execute("SELECT * FROM landlord_settings WHERE landlord_id=?", (user["id"],)).fetchone()
         return dict(row)
+
+# ─── Static file serving (MUST BE LAST — catches only non-API paths) ──
+STATIC_DIRS = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "apps", "desktop"),
+    os.path.join(os.path.dirname(__file__), "static"),
+]
+
+@app.get("/{filename:path}")
+async def serve_static(filename: str):
+    # Don't intercept API/unknown paths
+    if filename.startswith("api/") or filename.startswith("auth/"):
+        raise HTTPException(404, "Not found")
+    for static_dir in STATIC_DIRS:
+        filepath = os.path.join(static_dir, filename)
+        if os.path.isfile(filepath):
+            mt = mimetypes.guess_type(filepath)[0] or "text/html"
+            return FileResponse(filepath, media_type=mt)
+    return HTMLResponse("<h1>Domovník — 404 Not Found</h1>", status_code=404)
+
+@app.get("/")
+async def serve_root():
+    for static_dir in STATIC_DIRS:
+        filepath = os.path.join(static_dir, "login.html")
+        if os.path.isfile(filepath):
+            return FileResponse(filepath, media_type="text/html")
+    return HTMLResponse("<h1>Domovník — 404 Not Found</h1>", status_code=404)
 
 # ─── Run ──────────────────────────────────────────────
 if __name__ == "__main__":

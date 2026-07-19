@@ -428,6 +428,38 @@ def create_inspection(data: InspectionInput, user: dict = Depends(get_current_us
                    (iid, user["id"], data.unit_id, data.type, data.due_date, 1 if data.done else 0, data.note)); db.commit()
         return dict(db.execute("SELECT * FROM inspections WHERE id=?", (iid,)).fetchone())
 
+# ─── Admin ────────────────────────────────────────────
+@app.get("/api/admin/overview")
+def admin_overview(user: dict = Depends(get_current_user)):
+    if user["role"] != "LANDLORD": raise HTTPException(403, "Admin only")
+    with get_db() as db:
+        # All users (scoped to this landlord for now — true admin would be global)
+        users = db.execute("SELECT id, email, role, name, phone, created_at FROM users").fetchall()
+        units = db.execute("SELECT * FROM units WHERE landlord_id=?", (user["id"],)).fetchall()
+        tenancies = db.execute("""
+            SELECT t.*, u.name as unit_name, u.address as unit_address 
+            FROM tenancies t 
+            JOIN units u ON t.unit_id = u.id 
+            WHERE t.landlord_id=?
+            ORDER BY t.tenant_name
+        """, (user["id"],)).fetchall()
+        payments = db.execute("SELECT * FROM payments WHERE landlord_id=? ORDER BY period DESC", (user["id"],)).fetchall()
+        repair_requests = db.execute("SELECT * FROM repair_requests WHERE landlord_id=? ORDER BY created_at DESC", (user["id"],)).fetchall()
+        
+        return {
+            "users": [dict(r) for r in users],
+            "units": [dict(r) for r in units],
+            "tenancies": [dict(r) for r in tenancies],
+            "payments": [dict(r) for r in payments],
+            "repair_requests": [dict(r) for r in repair_requests],
+            "stats": {
+                "total_units": len(units),
+                "total_tenancies": len(tenancies),
+                "total_users": len(users),
+                "open_requests": sum(1 for r in repair_requests if dict(r)["status"] != "Vyřešeno")
+            }
+        }
+
 # ─── Settings ─────────────────────────────────────────
 @app.get("/api/settings")
 def get_settings(user: dict = Depends(get_current_user)):

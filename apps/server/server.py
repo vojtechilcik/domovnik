@@ -7,8 +7,10 @@ Usage: python3 server.py
 
 import json, os, sqlite3, hashlib, secrets, time
 from datetime import datetime, timedelta
+import mimetypes
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from contextlib import contextmanager
 
@@ -17,6 +19,25 @@ JWT_SECRET = os.getenv("JWT_SECRET", "domovnik-dev-secret-key-2026")
 
 app = FastAPI(title="Domovník API", version="0.0.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# ─── Static file serving ──────────────────────────────
+# Try multiple paths (local dev vs Docker container)
+STATIC_DIRS = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "apps", "desktop"),  # local dev
+    os.path.join(os.path.dirname(__file__), "static"),  # Docker /app/static
+]
+
+@app.get("/")
+@app.get("/{filename:path}")
+async def serve_static(filename: str = "login.html", request: Request = None):
+    if not filename or filename == "/":
+        filename = "login.html"
+    for static_dir in STATIC_DIRS:
+        filepath = os.path.join(static_dir, filename)
+        if os.path.isfile(filepath):
+            mt = mimetypes.guess_type(filepath)[0] or "text/html"
+            return FileResponse(filepath, media_type=mt)
+    return HTMLResponse("<h1>Domovník — 404 Not Found</h1>", status_code=404)
 
 # ─── Database ─────────────────────────────────────────
 def init_db():

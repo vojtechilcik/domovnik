@@ -1,4 +1,4 @@
-<!doctype html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+ ac<!doctype html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Domovník — Admin</title>
 <style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 :root{--ink:#1b1a17;--muted:#6f6e66;--paper:#eceae3;--surface:#faf9f5;--surface2:#f3f1ea;--line:#dbd8cf;--pine:#2f4a3e;--pine-soft:#e2eae3;--brick:#a13520;--brick-soft:#f2e2dc;--ochre:#8a6420;--ochre-soft:#efe6d2;--white:#fff}
@@ -32,10 +32,10 @@ td{font-size:13px;padding:10px 16px;border-bottom:1px solid var(--line)}tr:last-
 var TOKEN=localStorage.getItem('domovnik_token')||'';
 var API='http://localhost:3002';
 var USER=JSON.parse(localStorage.getItem('domovnik_user')||'{}');
-if(!TOKEN||USER.role!=='LANDLORD'){window.location.href='login-landlord.html'}
+if(!TOKEN||USER.role!=='ADMIN'){window.location.href='login-admin.html'}
 
 function api(path){return fetch(API+path,{headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'}}).then(function(r){return r.json()})}
-function logout(){localStorage.removeItem('domovnik_token');localStorage.removeItem('domovnik_user');window.location.href='login-landlord.html'}
+function logout(){localStorage.removeItem('domovnik_token');localStorage.removeItem('domovnik_user');window.location.href='login-admin.html'}
 
 api('/api/admin/overview').then(function(data){
   document.getElementById('loading').style.display='none';

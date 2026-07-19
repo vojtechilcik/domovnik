@@ -17,6 +17,8 @@ COPY apps/server/db/ ./db/
 COPY apps/desktop/login.html ./static/
 COPY apps/desktop/login-landlord.html ./static/
 COPY apps/desktop/login-tenant.html ./static/
+COPY apps/desktop/login-admin.html ./static/
+COPY apps/desktop/admin.html ./static/
 COPY apps/desktop/landlord-app.html ./static/
 COPY apps/desktop/tenant-app.html ./static/
 

@@ -649,15 +649,46 @@ document.querySelectorAll('.sidebar .nav-item').forEach(function(el){
   });
 });
 
+var API_BASE = window.location.port === '3002' ? 'http://localhost:3002' : '';
+var TOKEN = localStorage.getItem('domovnik_token') || '';
+var USER = JSON.parse(localStorage.getItem('domovnik_user') || '{}');
+
+function api(path, opts){
+  opts = opts || {};
+  opts.headers = opts.headers || {};
+  if(TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  opts.headers['Content-Type'] = 'application/json';
+  return fetch(API_BASE + path, opts).then(function(r){ return r.json(); });
+}
+
 function logout(){
   localStorage.removeItem("domovnik_token");
   localStorage.removeItem("domovnik_user");
   window.location.href="login-landlord.html";
 }
 
+function loadData(){
+  if(!TOKEN || USER.role !== 'LANDLORD') return;
+  Promise.all([
+    api('/api/units').catch(function(){ return null; }),
+    api('/api/tenancies').catch(function(){ return null; }),
+    api('/api/payments').catch(function(){ return null; }),
+    api('/api/repair-requests').catch(function(){ return null; }),
+    api('/api/inspections').catch(function(){ return null; })
+  ]).then(function(results){
+    if(results[0] && results[0].length) window._units = results[0];
+    if(results[1] && results[1].length) window._tenancies = results[1];
+    if(results[2] && results[2].length) window._payments = results[2];
+    if(results[3] && results[3].length) window._repairRequests = results[3];
+    if(results[4] && results[4].length) window._inspections = results[4];
+    renderPage(window._currentLandlordPage || 'Prehled');
+  });
+}
+
 // Init
 renderTenantRequests();
 updateBadge();
+if(TOKEN && USER.role === 'LANDLORD'){ loadData(); }
 renderPage('Prehled');
 </script>
 </body>

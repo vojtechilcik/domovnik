@@ -138,7 +138,7 @@ def get_current_user(request: Request) -> dict:
 
 # ─── Models ───────────────────────────────────────────
 class RegisterInput(BaseModel):
-    email: str; password: str; name: str; role: str = "LANDLORD"
+    email: str; password: str; name: str; role: str = "LANDLORD"  # LANDLORD, TENANT, ADMIN
 
 class LoginInput(BaseModel):
     email: str; password: str
@@ -199,8 +199,11 @@ def me(user: dict = Depends(get_current_user)):
 @app.post("/auth/seed")
 def seed_demo():
     with get_db() as db:
-        # Create landlord
+        # Create admin
         lhash = hash_password("heslo123")
+        db.execute("INSERT OR IGNORE INTO users (id,email,password_hash,role,name) VALUES (?,?,?,?,?)",
+                   ("admin-001", "admin@domovnik.cz", lhash, "ADMIN", "Administrátor"))
+        # Create landlord
         lid = "landlord-001"
         db.execute("INSERT OR IGNORE INTO users (id,email,password_hash,role,name) VALUES (?,?,?,?,?)",
                    (lid, "jan.novak@email.cz", lhash, "LANDLORD", "Jan Novák"))
@@ -256,7 +259,13 @@ def seed_demo():
         ]:
             db.execute("INSERT OR IGNORE INTO messages (id,repair_request_id,from_role,text,at) VALUES (?,?,?,?,?)", m)
         db.commit()
-    return {"seeded": True, "accounts": [{"email":"jan.novak@email.cz","role":"LANDLORD"},{"email":"petra@email.cz","role":"TENANT"},{"email":"tereza@email.cz","role":"TENANT"},{"email":"martin@email.cz","role":"TENANT"}], "password": "heslo123"}
+    return {"seeded": True, "accounts": [
+        {"email":"admin@domovnik.cz","role":"ADMIN"},
+        {"email":"jan.novak@email.cz","role":"LANDLORD"},
+        {"email":"petra@email.cz","role":"TENANT"},
+        {"email":"tereza@email.cz","role":"TENANT"},
+        {"email":"martin@email.cz","role":"TENANT"}
+    ], "password": "heslo123"}
 
 # ─── CRUD: Units ──────────────────────────────────────
 @app.get("/api/units")
@@ -431,20 +440,23 @@ def create_inspection(data: InspectionInput, user: dict = Depends(get_current_us
 # ─── Admin ────────────────────────────────────────────
 @app.get("/api/admin/overview")
 def admin_overview(user: dict = Depends(get_current_user)):
-    if user["role"] != "LANDLORD": raise HTTPException(403, "Admin only")
+    if user["role"] != "ADMIN": raise HTTPException(403, "Admin only — requires ADMIN role")
     with get_db() as db:
-        # All users (scoped to this landlord for now — true admin would be global)
+        # GLOBAL view: all users, all units, all tenancies regardless of landlord
         users = db.execute("SELECT id, email, role, name, phone, created_at FROM users").fetchall()
-        units = db.execute("SELECT * FROM units WHERE landlord_id=?", (user["id"],)).fetchall()
+        units = db.execute("SELECT * FROM units ORDER BY name").fetchall()
         tenancies = db.execute("""
-            SELECT t.*, u.name as unit_name, u.address as unit_address 
+            SELECT t.*, u.name as unit_name, u.address as unit_address,
+                   l.email as landlord_email, l.name as landlord_name
             FROM tenancies t 
             JOIN units u ON t.unit_id = u.id 
-            WHERE t.landlord_id=?
+            LEFT JOIN users l ON t.landlord_id = l.id
             ORDER BY t.tenant_name
-        """, (user["id"],)).fetchall()
-        payments = db.execute("SELECT * FROM payments WHERE landlord_id=? ORDER BY period DESC", (user["id"],)).fetchall()
-        repair_requests = db.execute("SELECT * FROM repair_requests WHERE landlord_id=? ORDER BY created_at DESC", (user["id"],)).fetchall()
+        """).fetchall()
+        payments = db.execute("SELECT * FROM payments ORDER BY period DESC").fetchall()
+        repair_requests = db.execute("SELECT * FROM repair_requests ORDER BY created_at DESC").fetchall()
+        inspections = db.execute("SELECT * FROM inspections ORDER BY done ASC, due_date ASC").fetchall()
+        settings = db.execute("SELECT * FROM landlord_settings").fetchall()
         
         return {
             "users": [dict(r) for r in users],
@@ -452,10 +464,14 @@ def admin_overview(user: dict = Depends(get_current_user)):
             "tenancies": [dict(r) for r in tenancies],
             "payments": [dict(r) for r in payments],
             "repair_requests": [dict(r) for r in repair_requests],
+            "inspections": [dict(r) for r in inspections],
+            "settings": [dict(r) for r in settings],
             "stats": {
                 "total_units": len(units),
                 "total_tenancies": len(tenancies),
                 "total_users": len(users),
+                "total_landlords": sum(1 for r in users if dict(r)["role"] == "LANDLORD"),
+                "total_tenants": sum(1 for r in users if dict(r)["role"] == "TENANT"),
                 "open_requests": sum(1 for r in repair_requests if dict(r)["status"] != "Vyřešeno")
             }
         }

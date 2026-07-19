@@ -271,7 +271,10 @@ def seed_demo():
 @app.get("/api/units")
 def list_units(user: dict = Depends(get_current_user)):
     with get_db() as db:
-        rows = db.execute("SELECT * FROM units WHERE landlord_id=? ORDER BY name", (user["id"],)).fetchall()
+        if user["role"] == "ADMIN":
+            rows = db.execute("SELECT * FROM units ORDER BY name").fetchall()
+        else:
+            rows = db.execute("SELECT * FROM units WHERE landlord_id=? ORDER BY name", (user["id"],)).fetchall()
         return [dict(r) for r in rows]
 
 @app.post("/api/units")

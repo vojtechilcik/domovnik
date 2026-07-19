@@ -1,0 +1,85 @@
+<!doctype html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Domovník — Admin</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+:root{--ink:#1b1a17;--muted:#6f6e66;--paper:#eceae3;--surface:#faf9f5;--surface2:#f3f1ea;--line:#dbd8cf;--pine:#2f4a3e;--pine-soft:#e2eae3;--brick:#a13520;--brick-soft:#f2e2dc;--ochre:#8a6420;--ochre-soft:#efe6d2;--white:#fff}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:18px;color:var(--pine)}
+.loading{text-align:center;padding:60px;color:var(--muted);font-size:16px}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.kpi-tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;border-left:4px solid var(--pine);text-align:center}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.kpi-value{font-size:28px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--ink)}
+.table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:24px}
+table{width:100%;border-collapse:collapse}
+th{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--line)}
+td{font-size:13px;padding:10px 16px;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:none}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500}
+.pill{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px}
+.pill-green{background:var(--pine-soft);color:var(--pine)}
+.pill-brick{background:var(--brick-soft);color:var(--brick)}
+.pill-muted{background:var(--surface2);color:var(--muted)}
+.btn{padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;border:none;font-size:13px;font-family:inherit}
+.btn-primary{background:var(--pine);color:var(--white)}.btn-primary:hover{opacity:.85}
+.btn-danger{border:1px solid var(--brick);background:transparent;color:var(--brick)}
+.section-title{font-size:15px;font-weight:600;margin:20px 0 12px;color:var(--ink)}
+.error{background:var(--brick-soft);border-radius:10px;padding:16px;color:var(--brick);text-align:center}
+</style></head><body>
+<div class="topbar"><h1>Domovník — Administrace</h1><button class="btn btn-danger" onclick="logout()">Odhlásit se</button></div>
+<div class="container"><div class="loading" id="loading">Načítání dat…</div><div id="content" style="display:none"></div><div class="error" id="error" style="display:none"></div></div>
+<script>
+var TOKEN=localStorage.getItem('domovnik_token')||'';
+var API='http://localhost:3002';
+var USER=JSON.parse(localStorage.getItem('domovnik_user')||'{}');
+if(!TOKEN||USER.role!=='LANDLORD'){window.location.href='login-landlord.html'}
+
+function api(path){return fetch(API+path,{headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'}}).then(function(r){return r.json()})}
+function logout(){localStorage.removeItem('domovnik_token');localStorage.removeItem('domovnik_user');window.location.href='login-landlord.html'}
+
+api('/api/admin/overview').then(function(data){
+  document.getElementById('loading').style.display='none';
+  if(!data||data.stats===undefined){
+    document.getElementById('error').style.display='block';
+    document.getElementById('error').textContent='Nepodařilo se načíst data — API nedostupné nebo nemáte oprávnění.';
+    return;
+  }
+  document.getElementById('content').style.display='block';
+  var h='<div class="kpi-grid">'+
+    '<div class="kpi-tile"><div class="kpi-label">Celkem jednotek</div><div class="kpi-value">'+data.stats.total_units+'</div></div>'+
+    '<div class="kpi-tile"><div class="kpi-label">Aktivní nájmy</div><div class="kpi-value">'+data.stats.total_tenancies+'</div></div>'+
+    '<div class="kpi-tile"><div class="kpi-label">Uživatelé</div><div class="kpi-value">'+data.stats.total_users+'</div></div>'+
+    '<div class="kpi-tile"><div class="kpi-label">Otevřené závady</div><div class="kpi-value">'+data.stats.open_requests+'</div></div>'+
+  '</div>';
+
+  // Users
+  h+='<div class="section-title">👥 Uživatelé (všichni registrovaní)</div><div class="table-wrap"><table><tr><th>Jméno</th><th>Email</th><th>Role</th><th>Telefon</th><th>Registrován</th></tr>';
+  data.users.forEach(function(u){
+    var r=u.role==='LANDLORD'?'pill-green':'pill-muted';
+    var rl=u.role==='LANDLORD'?'Pronajímatel':'Nájemník';
+    h+='<tr><td><strong>'+u.name+'</strong></td><td>'+u.email+'</td><td><span class="pill '+r+'">'+rl+'</span></td><td class="mono">'+(u.phone||'—')+'</td><td class="mono">'+(u.created_at||'').substring(0,10)+'</td></tr>';
+  });
+  h+='</table></div>';
+
+  // Units
+  h+='<div class="section-title">🏠 Jednotky</div><div class="table-wrap"><table><tr><th>Název</th><th>Adresa</th><th>Plocha</th><th>Typ</th></tr>';
+  data.units.forEach(function(u){
+    h+='<tr><td><strong>'+u.name+'</strong></td><td>'+u.address+'</td><td class="mono">'+u.area_m2+' m²</td><td>'+u.type+'</td></tr>';
+  });
+  h+='</table></div>';
+
+  // Tenancies with unit mapping
+  h+='<div class="section-title">📋 Nájemní smlouvy (propojení jednotka ↔ nájemník)</div><div class="table-wrap"><table><tr><th>Nájemce</th><th>Jednotka</th><th>Adresa</th><th>Nájemné</th><th>Zálohy</th><th>VS</th><th>Od</th><th>Do</th></tr>';
+  data.tenancies.forEach(function(t){
+    var end=t.lease_end||'doba neurčitá';
+    h+='<tr><td><strong>'+t.tenant_name+'</strong></td><td>'+t.unit_name+'</td><td>'+t.unit_address+'</td><td class="mono">'+(t.rent||0).toLocaleString('cs-CZ')+' Kč</td><td class="mono">'+(t.service_advances||0).toLocaleString('cs-CZ')+' Kč</td><td class="mono">'+t.variable_symbol+'</td><td class="mono">'+t.lease_start+'</td><td class="mono">'+end+'</td></tr>';
+  });
+  h+='</table></div>';
+
+  document.getElementById('content').innerHTML=h;
+}).catch(function(err){
+  document.getElementById('loading').style.display='none';
+  document.getElementById('error').style.display='block';
+  document.getElementById('error').textContent='Chyba: '+err.message;
+});
+</script></body></html>

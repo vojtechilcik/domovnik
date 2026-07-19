@@ -62,7 +62,7 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--paper);co
 </style>
 </head>
 <body>
-<div class="topbar"><div class="topbar-title">Domovník</div><div class="topbar-avatar">PN</div></div>
+<div class="topbar"><div class="topbar-title">Domovník</div><div style="display:flex;align-items:center;gap:12px"><div class="topbar-avatar">PN</div><button onclick="logout()" style="padding:6px 14px;border:1px solid var(--brick);border-radius:8px;background:transparent;color:var(--brick);cursor:pointer;font-weight:600;font-size:12px">Odhlásit</button></div></div>
 <div class="connection-bar online" id="connBar">🟢 Připojeno k agentovi (localhost:3001)</div>
 
 <div id="tabDomu" class="tab-content active">
@@ -139,6 +139,12 @@ function submitReport(){
 }
 
 function sendMsg(){var i=document.getElementById('msgInput'),t=i.value.trim();if(!t||!window._cdid)return;var r=rq.find(function(x){return x.id===window._cdid});if(!r)return;var n=new Date().toLocaleDateString('cs-CZ')+' '+new Date().toLocaleTimeString('cs-CZ');r.messages.push({from:'najemnik',text:t,at:n});i.value='';showDetail(r.id);setTimeout(function(){r.messages.push({from:'asistent',text:'Děkuji za upřesnění. Předal jsem informace správci.',at:n});showDetail(r.id)},1500)}
+
+function logout(){
+  localStorage.removeItem("domovnik_token");
+  localStorage.removeItem("domovnik_user");
+  window.location.href="login-tenant.html";
+}
 
 // Connection check
 setInterval(function(){fetch(AGENT+'/health').then(function(r){return r.json()}).then(function(){document.getElementById('connBar').className='connection-bar online';document.getElementById('connBar').textContent='🟢 Připojeno k agentovi'}).catch(function(){document.getElementById('connBar').className='connection-bar offline';document.getElementById('connBar').textContent='🔴 Agent offline — závady nelze odeslat'})},10000);

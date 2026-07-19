@@ -1,0 +1,62 @@
+<!doctype html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Domovník — Nájemník</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+:root{--ink:#1b1a17;--muted:#6f6e66;--paper:#eceae3;--surface:#faf9f5;--surface2:#f3f1ea;--line:#dbd8cf;--pine:#2f4a3e;--pine-soft:#e2eae3;--brick:#a13520;--white:#fff}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:40px;width:400px;max-width:90vw;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+h1{font-size:24px;font-weight:700;margin-bottom:4px;color:var(--pine)}.sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;margin-top:16px}
+input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:var(--white)}
+.btn{width:100%;padding:14px;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;border:none;margin-top:20px;transition:.15s;font-family:'IBM Plex Mono',monospace}
+.btn-primary{background:var(--pine);color:var(--white)}.btn-primary:hover{opacity:.85}
+.error{color:var(--brick);font-size:13px;margin-top:8px;display:none}.error.show{display:block}
+.info{background:var(--pine-soft);border-radius:10px;padding:12px;font-size:12px;color:var(--pine);margin-top:20px;text-align:center}
+.toggle{text-align:center;margin-top:16px;font-size:14px;color:var(--muted)}.toggle a{color:var(--pine);font-weight:600;text-decoration:none}
+</style></head><body>
+<div class="login-box" id="boxLogin">
+<h1>Domovník</h1><p class="sub">Přihlášení pro nájemníky</p>
+<label>Email</label><input type="email" id="email" placeholder="petra@email.cz" value="petra@email.cz">
+<label>Heslo</label><input type="password" id="password" placeholder="heslo123" value="heslo123">
+<div class="error" id="error"></div>
+<button class="btn btn-primary" onclick="login()">Přihlásit se</button>
+<div class="info">Demo účet:<br><strong>petra@email.cz</strong> / heslo123</div>
+<p class="toggle">Jste pronajímatel? <a href="login-landlord.html">Přihlášení pro pronajímatele</a></p>
+</div>
+<div class="login-box" id="boxRegister" style="display:none">
+<h1>Domovník</h1><p class="sub">Registrace nájemníka</p>
+<label>Jméno</label><input type="text" id="regName" placeholder="Jan Novák">
+<label>Email</label><input type="email" id="regEmail" placeholder="vas@email.cz">
+<label>Heslo</label><input type="password" id="regPassword" placeholder="Minimálně 6 znaků">
+<label>Pozvánkový kód</label><input type="text" id="regInvite" placeholder="Od pronajímatele">
+<div class="error" id="regError"></div>
+<button class="btn btn-primary" onclick="register()">Vytvořit účet</button>
+<p class="toggle">Už máte účet? <a href="#" onclick="showLogin();return false">Přihlaste se</a></p>
+</div>
+<script>
+var API='http://localhost:3002';var ROLE='TENANT';
+function showLogin(){document.getElementById('boxRegister').style.display='none';document.getElementById('boxLogin').style.display='block'}
+function showRegister(){document.getElementById('boxLogin').style.display='none';document.getElementById('boxRegister').style.display='block'}
+function login(){
+  var e=document.getElementById('email').value.trim(),p=document.getElementById('password').value.trim();
+  if(!e||!p){document.getElementById('error').className='error show';document.getElementById('error').textContent='Zadejte email a heslo';return}
+  fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})})
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+  .then(function(res){
+    if(!res.ok||res.data.user.role!==ROLE){document.getElementById('error').className='error show';document.getElementById('error').textContent=res.data.detail||'Přístup pouze pro nájemníky';return}
+    localStorage.setItem('domovnik_token',res.data.access_token);localStorage.setItem('domovnik_user',JSON.stringify(res.data.user));
+    window.location.href='tenant-app.html';
+  }).catch(function(err){document.getElementById('error').className='error show';document.getElementById('error').textContent='Server není dostupný'});
+}
+function register(){
+  var n=document.getElementById('regName').value.trim(),e=document.getElementById('regEmail').value.trim(),p=document.getElementById('regPassword').value.trim();
+  if(!n||!e||!p){document.getElementById('regError').className='error show';document.getElementById('regError').textContent='Vyplňte všechna pole';return}
+  if(p.length<6){document.getElementById('regError').className='error show';document.getElementById('regError').textContent='Heslo musí mít alespoň 6 znaků';return}
+  fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,email:e,password:p,role:ROLE})})
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+  .then(function(res){
+    if(!res.ok){document.getElementById('regError').className='error show';document.getElementById('regError').textContent=res.data.detail||'Registrace selhala';return}
+    localStorage.setItem('domovnik_token',res.data.access_token);localStorage.setItem('domovnik_user',JSON.stringify(res.data.user));
+    window.location.href='tenant-app.html';
+  }).catch(function(err){document.getElementById('regError').className='error show';document.getElementById('regError').textContent='Server není dostupný'});
+}
+</script></body></html>
